@@ -1,0 +1,12 @@
+{
+  "repo": "https://github.com/colyseus/colyseus-unity-sdk.git",
+  "ref": "master",
+  "sourceSubpath": "Assets/Colyseus",
+  "dest": "Packages/io.colyseus.sdk",
+  "nativeWebSocket": {
+    "repo": "https://github.com/endel/NativeWebSocket.git",
+    "ref": "upm-2",
+    "sourceSubpath": "WebSocket",
+    "destSubpath": "Runtime/WebSocket"
+  }
+}

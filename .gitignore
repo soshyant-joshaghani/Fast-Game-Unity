@@ -1,0 +1,25 @@
+# Unity
+Library/
+Logs/
+Temp/
+Obj/
+Build/
+Builds/
+UserSettings/
+MemoryCaptures/
+Recordings/
+
+Packages/io.colyseus.sdk/
+
+tests/.tools/
+tests/_compile_out/
+
+.vscode/
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.user
+*.userprefs
+*.pidb
+*.booproj

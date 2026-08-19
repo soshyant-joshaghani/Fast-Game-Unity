@@ -1,0 +1,23 @@
+{
+  "name": "com.fastgame.sdk",
+  "version": "0.1.0",
+  "displayName": "Fast Game SDK",
+  "description": "Official Fast Game FastAPI client for Unity. Use Colyseus Unity SDK as a sibling for multiplayer.",
+  "unity": "6000.3",
+  "keywords": ["fast-game", "fastapi"],
+  "author": {
+    "name": "Fast Game"
+  },
+  "samples": [
+    {
+      "displayName": "ApiOnly",
+      "description": "Login, PrepareSession, shop — FastAPI only.",
+      "path": "Samples~/ApiOnly"
+    },
+    {
+      "displayName": "SandboxMultiplayer",
+      "description": "Fast Game PrepareSession + sibling Colyseus join sketch.",
+      "path": "Samples~/SandboxMultiplayer"
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.fastgame.store">
+  <application>
+    <activity
+      android:name="com.fastgame.store.FastGameStoreActivity"
+      android:theme="@style/Theme.FastGameStore"
+      android:excludeFromRecents="true"
+      android:launchMode="standard" />
+  </application>
+</manifest>

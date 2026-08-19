@@ -1,0 +1,12 @@
+{
+  "dependencies": {
+    "com.unity.ugui": "2.0.0",
+    "com.unity.modules.androidjni": "1.0.0",
+    "com.unity.modules.audio": "1.0.0",
+    "com.unity.modules.imgui": "1.0.0",
+    "com.unity.modules.jsonserialize": "1.0.0",
+    "com.unity.modules.unitywebrequest": "1.0.0",
+    "com.fastgame.sdk": "file:com.fastgame.sdk",
+    "io.colyseus.sdk": "file:io.colyseus.sdk"
+  }
+}

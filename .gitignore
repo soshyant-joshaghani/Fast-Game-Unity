@@ -23,3 +23,4 @@ tests/_compile_out/
 *.userprefs
 *.pidb
 *.booproj
+*.pyc

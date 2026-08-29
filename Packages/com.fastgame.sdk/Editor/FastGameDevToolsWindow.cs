@@ -1,19 +1,26 @@
+using System;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Networking;
 
 namespace FastGame.Editor
 {
-    /// <summary>Editor utilities to reset Fast Game PlayerPrefs and download cache.</summary>
+    /// <summary>Editor utilities to reset Fast Game PlayerPrefs, download cache, and inspect tip publish state.</summary>
     public sealed class FastGameDevToolsWindow : EditorWindow
     {
         Vector2 _scroll;
         string _status = "";
+        string _apiBaseUrl = "http://api.localhost/api/v1";
+        string _gameCode = "game";
+        string _tipStatus = "Tip: not checked yet.";
+        bool _tipBusy;
 
         [MenuItem("Fast Game/Dev Tools…", false, 0)]
         public static void Open()
         {
             var window = GetWindow<FastGameDevToolsWindow>(false, "Fast Game Dev", true);
-            window.minSize = new Vector2(360f, 280f);
+            window.minSize = new Vector2(360f, 360f);
+            window.SyncFromSceneClient();
             window.RefreshStatus();
         }
 
@@ -48,6 +55,36 @@ namespace FastGame.Editor
 
         void OnGUI()
         {
+            EditorGUILayout.LabelField("Published tip (player contract)", EditorStyles.boldLabel);
+            EditorGUILayout.HelpBox(
+                "Draft asset-packs in the panel are editor-only. Unity DOWNLOAD uses "
+                + "GET /apps/games/tip/{game}/game — 404 until you Publish tip on the game config page.",
+                MessageType.Info);
+
+            SyncFromSceneClient();
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                _apiBaseUrl = EditorGUILayout.TextField("Api Base Url", _apiBaseUrl);
+            }
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                _gameCode = EditorGUILayout.TextField("Game Code", _gameCode);
+            }
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                EditorGUI.BeginDisabledGroup(_tipBusy);
+                if (GUILayout.Button(_tipBusy ? "Checking…" : "Check tip published"))
+                    CheckTipPublished();
+                if (GUILayout.Button("Copy publish curl"))
+                    CopyPublishCurl();
+                EditorGUI.EndDisabledGroup();
+            }
+
+            EditorGUILayout.HelpBox(_tipStatus, MessageType.None);
+
+            EditorGUILayout.Space(8f);
             EditorGUILayout.LabelField("Local data", EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
                 "Use this when testing login, language, or downloads. "
@@ -94,7 +131,80 @@ namespace FastGame.Editor
             }
         }
 
-        void Run(System.Action action, string logMessage)
+        void SyncFromSceneClient()
+        {
+            var client = FindObjectOfType<FastGameClientBehaviour>();
+            if (client == null)
+                return;
+            if (!string.IsNullOrWhiteSpace(client.ApiBaseUrl))
+                _apiBaseUrl = client.ApiBaseUrl;
+            if (!string.IsNullOrWhiteSpace(client.GameCode))
+                _gameCode = client.GameCode;
+        }
+
+        void CheckTipPublished()
+        {
+            _tipBusy = true;
+            _tipStatus = "Tip: checking…";
+            Repaint();
+
+            try
+            {
+                var baseUrl = FastGameConfig.NormalizeApiBaseUrl(_apiBaseUrl).TrimEnd('/');
+                var game = (_gameCode ?? "").Trim();
+                if (string.IsNullOrEmpty(game))
+                {
+                    _tipStatus = "Tip: enter Game Code.";
+                    return;
+                }
+
+                var url = $"{baseUrl}/apps/games/tip/{Uri.EscapeDataString(game)}/bootstrap";
+                using var req = UnityWebRequest.Get(url);
+                req.SendWebRequest();
+                while (!req.isDone)
+                { }
+
+#if UNITY_2020_2_OR_NEWER
+                if (req.result != UnityWebRequest.Result.Success)
+#else
+                if (req.isNetworkError || req.isHttpError)
+#endif
+                {
+                    _tipStatus = $"Tip: request failed ({(int)req.responseCode}) — {req.downloadHandler?.text ?? req.error}";
+                    return;
+                }
+
+                var json = req.downloadHandler?.text ?? "{}";
+                var boot = FastGameJson.ParseObject(json);
+                var published = boot != null && FastGameJson.GetBool(boot, "published");
+                var version = FastGameJson.GetInt(boot, "tip_version");
+                _tipStatus = published
+                    ? $"Tip: published (version {version}). DOWNLOAD GetGameConfig should return 200."
+                    : "Tip: NOT published — panel → game config → Publish tip before Unity DOWNLOAD works.";
+            }
+            catch (Exception e)
+            {
+                _tipStatus = "Tip: " + e.Message;
+            }
+            finally
+            {
+                _tipBusy = false;
+                Repaint();
+            }
+        }
+
+        void CopyPublishCurl()
+        {
+            var baseUrl = FastGameConfig.NormalizeApiBaseUrl(_apiBaseUrl).TrimEnd('/');
+            var game = (_gameCode ?? "game").Trim();
+            var curl =
+                $"curl -X POST \"{baseUrl}/apps/games/tip/{game}/admin/publish\" "
+                + "-H \"Authorization: Bearer <panel_token>\"";
+            EditorGUIUtility.systemCopyBuffer = curl;
+            Debug.Log("Fast Game: copied publish curl to clipboard.");
+        }
+
+        void Run(Action action, string logMessage)
         {
             action();
             if (!string.IsNullOrEmpty(logMessage))

@@ -15,6 +15,8 @@ UPM package `com.fastgame.sdk` — **FastAPI client only**.
 
 **Fast Game → Dev Tools…** — inspect saved token / Enter ID / language / download cache; clear individually or all.
 
+**Published tip:** use **Check tip published** (GetBootstrap). Draft asset-packs in the panel are **not** what Unity DOWNLOAD reads — players need **Publish tip** on game config (`POST …/tip/{game}/admin/publish`). Until published, `GetGameConfig` returns 404 and DOWNLOAD shows *Tip not published*.
+
 Quick menu (no window):
 
 - **Fast Game → Clear All Local Data**

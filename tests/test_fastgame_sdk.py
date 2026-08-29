@@ -146,7 +146,41 @@ def test_unity_tip_facade_content_methods():
     assert "GetBootstrap" in contract
     assert "GetGameConfig" in contract
     assert "GetMapConfig" in contract
+    assert "GetPackTipAsync" in content
+    assert "/apps/games/asset-packs/" in content
+    assert "payload" in _read(UNITY / "Assets/FastGameAssets.cs")
     assert "deprecated for players" in contract.lower()
+
+
+def test_unity_download_pack_filter_and_platform():
+    selector = _read(UNITY / "FastGamePackSelector.cs")
+    platform = _read(UNITY / "FastGameRuntimePlatform.cs")
+    download = _read(UNITY / "Components/FastGameDownloadSceneBehaviour.cs")
+    dto = _read(UNITY / "Models/FastGameDto.cs")
+    models = _read(UNITY / "Models/Models.cs")
+
+    assert "FastGamePackSelector" in selector
+    assert "MatchesTagList" in selector
+    assert 'tag == "*"' in selector or 'tag == \"*\"' in selector
+    assert "SkipSplashPacks" in selector
+    assert "GetRuntimeOs" in platform
+    assert "GetQualityClass" in platform
+    assert "StorePlatformToOs" in platform
+    assert "myket" in platform
+    assert "steam" in platform
+
+    assert "GetGameConfigAsync" in download
+    assert "FastGamePackSelector.ListForDownload" in download
+    assert "FastGamePackDownload" in download
+    assert "Tip not published" in download
+    assert "ResolveDownloadUrlAsync" in download
+
+    assert 'ParseStringList(p, "quality")' in dto
+    assert 'ParseStringList(p, "platforms")' in dto
+    assert 'ParseStringList(p, "languages")' in dto
+    assert "public List<string> Quality" in models
+    assert "public List<string> Platforms" in models
+    assert "public List<string> Languages" in models
 
 
 def test_unity_progress_get_save():

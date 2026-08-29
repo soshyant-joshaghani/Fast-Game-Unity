@@ -14,7 +14,9 @@ namespace FastGame
         public List<AssetPack> ListPacksFromRuntime(Dictionary<string, object> mapRuntime)
         {
             var list = new List<AssetPack>();
-            var arr = FastGameJson.GetArray(mapRuntime, "asset_packs");
+            if (mapRuntime == null) return list;
+            var source = FastGameJson.GetObject(mapRuntime, "payload") ?? mapRuntime;
+            var arr = FastGameJson.GetArray(source, "asset_packs");
             if (arr == null) return list;
             foreach (var item in arr)
             {

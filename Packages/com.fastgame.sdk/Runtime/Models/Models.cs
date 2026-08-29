@@ -52,6 +52,14 @@ namespace FastGame.Models
         public string Version;
         public string Url;
         public string Hash;
+        /// <summary>mobile | pc | * — DOWNLOAD filter (A4).</summary>
+        public List<string> Quality = new List<string>();
+        /// <summary>android | ios | windows | mac | web | *</summary>
+        public List<string> Platforms = new List<string>();
+        /// <summary>BCP-47 tags or * — matched to preferred_language.</summary>
+        public List<string> Languages = new List<string>();
+        /// <summary>content | locale | splash | upscale</summary>
+        public string Kind = "content";
     }
 
     public sealed class GameCatalogDetail : GameCatalog

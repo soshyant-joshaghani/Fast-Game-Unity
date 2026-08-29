@@ -78,10 +78,30 @@ Image/Video view components do **not** hide themselves on play — only the main
 |---------|---------|
 | **`Next Scene`** | `MAP_4_MENU` |
 | **`Auto Start`** | fetch + download on enter |
-| **`Advance When Nothing To Download`** | skip to menu if no packs / API down |
+| **`Advance When Nothing To Download`** | skip to menu if no packs / tip unpublished |
 | **`Skip Splash Packs`** | don't re-download splash assets |
 
 Optional: **`Progress Slider`**, **`Status Label`** (Text or TMP).
+
+### Published tip vs draft packs
+
+| | Draft asset-packs | Published tip |
+|--|-------------------|---------------|
+| API | `GET /asset-packs/{game}/packs` (panel) | `GET /tip/{game}/game` (player) |
+| When | Editor CRUD + uploads | After **Publish tip** on game config |
+| Unity DOWNLOAD | **Not used** | **Required** — 404 until published |
+
+**Unblock:** panel → upload pack parts (ready) → set `quality`, `platforms`, `languages`, `kind` → **Publish tip**.
+
+**Filter** (from LANGUAGE locale + runtime OS + quality class):
+
+- `quality` includes `mobile`|`pc` or `*`
+- `platforms` includes `android`|`ios`|`windows`|`mac`|`web` or `*`
+- `languages` includes preferred language from `FastGameLocalePrefs` or `*`
+
+Store flavor (`myket`, `googleplay`, …) selects **which APK you built**; pack `platforms[]` still use **OS ids**. Author fa-only packs for Bazaar/Myket, multi-lang for Google Play, etc.
+
+**Dev tools:** **Fast Game → Dev Tools…** → **Check tip published** (calls GetBootstrap).
 
 **UE** — bind widget buttons:
 - **Back To Enter ID** (`BackToEnterId`) on password + OTP widgets

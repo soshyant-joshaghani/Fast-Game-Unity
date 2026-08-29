@@ -185,7 +185,7 @@ namespace FastGame
                 if (string.IsNullOrWhiteSpace(splashUrl))
                 {
                     var game = await host.Client.Content.GetGameConfigAsync(host.GameCode);
-                    splashUrl = ReadSplashUrlFromPacks(game);
+                    splashUrl = ReadSplashUrlFromPacks(FastGameJson.GetObject(game, "payload") ?? game);
                 }
             }
             catch

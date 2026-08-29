@@ -91,7 +91,26 @@ namespace FastGame
                 Version = FastGameJson.GetString(p, "version"),
                 Url = FastGameJson.GetString(p, "url"),
                 Hash = FastGameJson.GetString(p, "hash"),
+                Quality = ParseStringList(p, "quality"),
+                Platforms = ParseStringList(p, "platforms"),
+                Languages = ParseStringList(p, "languages"),
+                Kind = FastGameJson.GetString(p, "kind") ?? "content",
             };
+        }
+
+        static List<string> ParseStringList(Dictionary<string, object> obj, string key)
+        {
+            var list = new List<string>();
+            var raw = FastGameJson.GetArray(obj, key);
+            if (raw == null)
+                return list;
+            foreach (var item in raw)
+            {
+                var s = item?.ToString()?.Trim();
+                if (!string.IsNullOrEmpty(s))
+                    list.Add(s);
+            }
+            return list;
         }
 
         public static Character ParseCharacter(Dictionary<string, object> o)

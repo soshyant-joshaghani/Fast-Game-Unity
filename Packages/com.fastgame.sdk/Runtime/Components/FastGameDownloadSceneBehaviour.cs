@@ -1,17 +1,15 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Threading.Tasks;
 using FastGame.Models;
 using UnityEngine;
-using UnityEngine.Networking;
 using UnityEngine.UI;
 
 namespace FastGame
 {
     /// <summary>
-    /// DOWNLOAD — fetches game packs from tip JSON, downloads to persistent storage, then loads
-    /// <see cref="FastGameSceneFlowBehaviour.NextScene"/> (default MENU).
+    /// DOWNLOAD — fetches published tip pack index, filters quality × platform × language,
+    /// downloads to persistent storage, then loads <see cref="FastGameSceneFlowBehaviour.NextScene"/>.
     /// </summary>
     [AddComponentMenu("Fast Game/Scenes/Download")]
     public sealed class FastGameDownloadSceneBehaviour : FastGameSceneFlowBehaviour
@@ -20,7 +18,7 @@ namespace FastGame
         [Tooltip("Start pack fetch/download automatically on scene enter.")]
         public bool AutoStart = true;
 
-        [Tooltip("When no packs or API unavailable, advance immediately.")]
+        [Tooltip("When no matching packs or tip unpublished, advance immediately.")]
         public bool AdvanceWhenNothingToDownload = true;
 
         [Tooltip("Skip splash packs (already handled on SPLASH scene).")]
@@ -67,115 +65,133 @@ namespace FastGame
                 return;
             }
 
-            List<AssetPack> packs;
+            Dictionary<string, object> gameTip;
             try
             {
-                var game = await host.Client.Content.GetGameConfigAsync(host.GameCode);
-                packs = FilterPacks(new FastGameAssets().ListPacksFromRuntime(game));
+                gameTip = await host.Client.Content.GetGameConfigAsync(host.GameCode);
+            }
+            catch (FastGameException e)
+            {
+                if (IsTipNotPublished(e))
+                {
+                    Debug.LogWarning(
+                        "FastGame download: tip not published — publish tip in panel before DOWNLOAD.");
+                    SetProgress(0f, "Tip not published — Publish tip in panel");
+                }
+                else
+                {
+                    Debug.LogWarning("FastGame download: " + e.Message);
+                    SetProgress(0f, "Download failed");
+                }
+
+                if (AdvanceWhenNothingToDownload)
+                    await FinishAsync();
+                return;
             }
             catch (Exception e)
             {
                 Debug.LogWarning("FastGame download: " + e.Message);
                 if (AdvanceWhenNothingToDownload)
-                {
                     await FinishAsync();
-                    return;
-                }
-                SetProgress(0f, "Download failed");
+                else
+                    SetProgress(0f, "Download failed");
                 return;
             }
 
+            var allPacks = new FastGameAssets().ListPacksFromRuntime(gameTip);
+            var ctx = BuildDownloadContext(host);
+            ctx.SkipSplashPacks = SkipSplashPacks;
+            var packs = FastGamePackSelector.ListForDownload(allPacks, ctx);
+
             if (packs.Count == 0)
             {
-                SetProgress(1f, "Ready");
+                SetProgress(1f, "No packs for this device / language");
                 await FinishAsync();
                 return;
             }
 
-            for (var i = 0; i < packs.Count; i++)
+            var downloadable = new List<AssetPack>();
+            foreach (var pack in packs)
             {
-                var pack = packs[i];
-                var label = string.IsNullOrWhiteSpace(pack.Label) ? pack.PackId : pack.Label;
-                SetProgress((float)i / packs.Count, $"Downloading {label}…");
+                if (FastGamePackDownload.HasDownloadUrl(pack))
+                {
+                    downloadable.Add(pack);
+                    continue;
+                }
+
                 try
                 {
-                    await DownloadPackAsync(pack);
+                    var url = await FastGamePackDownload.ResolveDownloadUrlAsync(
+                        host.Client.Content, host.GameCode, pack);
+                    if (!string.IsNullOrWhiteSpace(url))
+                    {
+                        pack.Url = url;
+                        downloadable.Add(pack);
+                    }
+                    else
+                        Debug.LogWarning($"FastGame download: no URL for pack {pack.PackId}");
+                }
+                catch (Exception e)
+                {
+                    Debug.LogWarning($"FastGame download: resolve {pack.PackId}: {e.Message}");
+                }
+            }
+
+            if (downloadable.Count == 0)
+            {
+                SetProgress(1f, "No downloadable packs");
+                await FinishAsync();
+                return;
+            }
+
+            for (var i = 0; i < downloadable.Count; i++)
+            {
+                var pack = downloadable[i];
+                var label = string.IsNullOrWhiteSpace(pack.Label) ? pack.PackId : pack.Label;
+                SetProgress((float)i / downloadable.Count, $"Downloading {label}…");
+                try
+                {
+                    var url = pack.Url;
+                    if (string.IsNullOrWhiteSpace(url))
+                        url = await FastGamePackDownload.ResolveDownloadUrlAsync(
+                            host.Client.Content, host.GameCode, pack);
+                    await FastGamePackDownload.DownloadToCacheAsync(pack, url);
                 }
                 catch (Exception e)
                 {
                     Debug.LogWarning($"FastGame download pack {pack.PackId}: {e.Message}");
                 }
-                SetProgress((float)(i + 1) / packs.Count, $"Downloaded {label}");
+                SetProgress((float)(i + 1) / downloadable.Count, $"Downloaded {label}");
             }
 
             SetProgress(1f, "Complete");
             await FinishAsync();
         }
 
-        List<AssetPack> FilterPacks(List<AssetPack> packs)
+        static FastGameDownloadContext BuildDownloadContext(FastGameClientBehaviour host)
         {
-            var outList = new List<AssetPack>();
-            foreach (var pack in packs)
+            var os = FastGameRuntimePlatform.GetRuntimeOs();
+            var storeOs = FastGameRuntimePlatform.StorePlatformToOs(host?.StorePlatform);
+            if (!string.IsNullOrWhiteSpace(storeOs)
+                && !string.Equals(os, storeOs, StringComparison.OrdinalIgnoreCase)
+                && Application.isEditor)
             {
-                if (pack == null || string.IsNullOrWhiteSpace(pack.Url))
-                    continue;
-                if (SkipSplashPacks && IsSplashPack(pack))
-                    continue;
-                outList.Add(pack);
+                os = storeOs;
             }
-            return outList;
+
+            return new FastGameDownloadContext
+            {
+                QualityClass = FastGameRuntimePlatform.GetQualityClass(os),
+                RuntimeOs = os,
+                PreferredLanguage = FastGameLocalePrefs.Get("en"),
+            };
         }
 
-        static bool IsSplashPack(AssetPack pack)
+        static bool IsTipNotPublished(FastGameException e)
         {
-            var id = pack.PackId ?? "";
-            var label = pack.Label ?? "";
-            return id.Equals("splash", StringComparison.OrdinalIgnoreCase)
-                || label.Equals("splash", StringComparison.OrdinalIgnoreCase);
-        }
-
-        static async Task DownloadPackAsync(AssetPack pack)
-        {
-            var dir = Path.Combine(
-                Application.persistentDataPath,
-                "fastgame",
-                "packs",
-                SanitizeFileName(pack.PackId ?? pack.Id ?? "pack"));
-            Directory.CreateDirectory(dir);
-
-            var fileName = SanitizeFileName(
-                string.IsNullOrWhiteSpace(pack.Hash)
-                    ? pack.Version ?? "data"
-                    : pack.Hash);
-            var path = Path.Combine(dir, fileName);
-
-            if (File.Exists(path))
-                return;
-
-            using var req = UnityWebRequest.Get(pack.Url);
-            req.downloadHandler = new DownloadHandlerBuffer();
-            var op = req.SendWebRequest();
-            while (!op.isDone)
-                await Task.Yield();
-
-#if UNITY_2020_2_OR_NEWER
-            if (req.result != UnityWebRequest.Result.Success)
-#else
-            if (req.isNetworkError || req.isHttpError)
-#endif
-                throw new InvalidOperationException(req.error ?? "download failed");
-
-            File.WriteAllBytes(path, req.downloadHandler.data);
-            await Task.CompletedTask;
-        }
-
-        static string SanitizeFileName(string value)
-        {
-            if (string.IsNullOrWhiteSpace(value))
-                return "file";
-            foreach (var c in Path.GetInvalidFileNameChars())
-                value = value.Replace(c, '_');
-            return value;
+            var msg = e.Message ?? "";
+            return msg.Contains("404", StringComparison.Ordinal)
+                || msg.Contains("Tip not published", StringComparison.OrdinalIgnoreCase);
         }
 
         void SetProgress(float normalized, string message)

@@ -33,6 +33,15 @@ namespace FastGame
             return FastGameJson.ParseObject(text) ?? new Dictionary<string, object>();
         }
 
+        /// <summary>Pack tip with ready parts — used when game tip index has no top-level url.</summary>
+        public async Task<Dictionary<string, object>> GetPackTipAsync(string gameCode, string packId)
+        {
+            var text = await _http.RequestRawAsync(
+                "GET",
+                $"/apps/games/asset-packs/{Escape(gameCode)}/packs/{Escape(packId)}");
+            return FastGameJson.ParseObject(text) ?? new Dictionary<string, object>();
+        }
+
         /// <summary>Player GetMapConfig — tip map payload (404 if unpublished).</summary>
         public async Task<Dictionary<string, object>> GetMapConfigAsync(string gameCode, string mapId)
         {

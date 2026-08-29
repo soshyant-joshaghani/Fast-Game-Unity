@@ -17,6 +17,67 @@ namespace FastGame
 
         string Base(string gameId) => $"/apps/games/content/{Escape(gameId)}";
 
+        string TipBase(string gameCode) => $"/apps/games/tip/{Escape(gameCode)}";
+
+        /// <summary>SPLASH GetBootstrap — published tip metadata (404 if unpublished).</summary>
+        public async Task<Dictionary<string, object>> GetBootstrapAsync(string gameCode)
+        {
+            var text = await _http.RequestRawAsync("GET", $"{TipBase(gameCode)}/bootstrap");
+            return FastGameJson.ParseObject(text) ?? new Dictionary<string, object>();
+        }
+
+        /// <summary>Player GetGameConfig — tip payload (404 if unpublished).</summary>
+        public async Task<Dictionary<string, object>> GetGameConfigAsync(string gameCode)
+        {
+            var text = await _http.RequestRawAsync("GET", $"{TipBase(gameCode)}/game");
+            return FastGameJson.ParseObject(text) ?? new Dictionary<string, object>();
+        }
+
+        /// <summary>Player GetMapConfig — tip map payload (404 if unpublished).</summary>
+        public async Task<Dictionary<string, object>> GetMapConfigAsync(string gameCode, string mapId)
+        {
+            var text = await _http.RequestRawAsync(
+                "GET", $"{TipBase(gameCode)}/maps/{Escape(mapId)}");
+            return FastGameJson.ParseObject(text) ?? new Dictionary<string, object>();
+        }
+
+        /// <summary>Progressive GetCharacter (A3).</summary>
+        public async Task<Dictionary<string, object>> GetCharacterAsync(string gameCode, string characterId)
+        {
+            var text = await _http.RequestRawAsync(
+                "GET", $"{TipBase(gameCode)}/characters/{Escape(characterId)}");
+            return FastGameJson.ParseObject(text) ?? new Dictionary<string, object>();
+        }
+
+        /// <summary>Progressive GetDialogue — 404 until panel craft (A8).</summary>
+        public async Task<Dictionary<string, object>> GetDialogueAsync(string gameCode, string dialogueId)
+        {
+            var text = await _http.RequestRawAsync(
+                "GET", $"{TipBase(gameCode)}/dialogues/{Escape(dialogueId)}");
+            return FastGameJson.ParseObject(text) ?? new Dictionary<string, object>();
+        }
+
+        /// <summary>Progressive GetQuiz — 404 until panel craft (A8).</summary>
+        public async Task<Dictionary<string, object>> GetQuizAsync(string gameCode, string quizId)
+        {
+            var text = await _http.RequestRawAsync(
+                "GET", $"{TipBase(gameCode)}/quizzes/{Escape(quizId)}");
+            return FastGameJson.ParseObject(text) ?? new Dictionary<string, object>();
+        }
+
+        /// <summary>GetStrings(context, lang) — one locale context slice (A4).</summary>
+        public async Task<Dictionary<string, object>> GetStringsAsync(
+            string gameCode, string context = "HOME", string lang = "en")
+        {
+            var path =
+                $"/apps/games/strings/{Escape(gameCode)}" +
+                $"?context={Escape(string.IsNullOrEmpty(context) ? "HOME" : context)}" +
+                $"&lang={Escape(string.IsNullOrEmpty(lang) ? "en" : lang)}";
+            var text = await _http.RequestRawAsync("GET", path);
+            return FastGameJson.ParseObject(text) ?? new Dictionary<string, object>();
+        }
+
+        /// <summary>Deprecated for players — prefer <see cref="GetGameConfigAsync"/>.</summary>
         public async Task<List<Character>> ListCharactersAsync(
             string gameId,
             string role = null,
@@ -94,6 +155,7 @@ namespace FastGame
             return list;
         }
 
+        /// <summary>Deprecated for players — prefer <see cref="GetMapConfigAsync"/>.</summary>
         public async Task<Dictionary<string, object>> GetMapRuntimeAsync(
             string gameId,
             string mapId,
@@ -201,6 +263,39 @@ namespace FastGame
                 MapId = mapId,
                 ColyseusRoom = game?.ColyseusRoom,
             };
+        }
+
+        public async Task<List<CollectibleDef>> ListAchievementsAsync(string gameId, string lang = null)
+            => await ListCollectiblesAsync($"{Base(gameId)}/achievements", "achievement_id", lang);
+
+        public async Task<List<CollectibleDef>> ListAvatarsAsync(string gameId, string lang = null)
+            => await ListCollectiblesAsync($"{Base(gameId)}/avatars", "avatar_id", lang);
+
+        public async Task<List<CollectibleDef>> ListTitlesAsync(string gameId, string lang = null)
+            => await ListCollectiblesAsync($"{Base(gameId)}/titles", "title_id", lang);
+
+        async Task<List<CollectibleDef>> ListCollectiblesAsync(
+            string path, string codeKey, string lang)
+        {
+            path = FastGameHttp.AppendI18nQuery(path, lang, false);
+            var text = await _http.RequestRawAsync("GET", path);
+            var arr = FastGameJson.ParseArray(text) ?? new List<object>();
+            var list = new List<CollectibleDef>();
+            foreach (var item in arr)
+            {
+                if (item is not Dictionary<string, object> o)
+                    continue;
+                list.Add(new CollectibleDef
+                {
+                    Id = FastGameJson.GetString(o, "id"),
+                    Code = FastGameJson.GetString(o, codeKey),
+                    Label = FastGameJson.GetString(o, "label")
+                        ?? FastGameJson.GetString(o, codeKey),
+                    ImageUrl = FastGameJson.GetString(o, "image_url"),
+                    Locked = FastGameJson.GetBool(o, "locked"),
+                });
+            }
+            return list;
         }
 
         static string Escape(string s) => UnityEngine.Networking.UnityWebRequest.EscapeURL(s ?? "");

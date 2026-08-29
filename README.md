@@ -16,7 +16,7 @@ Standalone **Unity 6.3 LTS** project for the official Fast Game client SDK.
 
 1. Unity Hub → **Unity 6.3 LTS** → Open this folder
 2. Hub may regenerate missing `ProjectSettings` on first import
-3. Point **Initialize Client** at a running Fast Game API, e.g. `api.localhost`
+3. Point **Initialize Client** at a running Fast Game API, e.g. `http://api.localhost/api/v1`
 
 ## Tests
 

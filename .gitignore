@@ -13,6 +13,12 @@ Packages/io.colyseus.sdk/
 
 tests/.tools/
 tests/_compile_out/
+Packages/com.fastgame.sdk/_compile_out/
+.pytest_cache/
+
+# Unity-generated (Visual Scripting AOT/options DB)
+Assets/Unity.VisualScripting.Generated/
+Assets/Unity.VisualScripting.Generated.meta
 
 .vscode/
 *.csproj

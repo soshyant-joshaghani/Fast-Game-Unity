@@ -12,7 +12,7 @@ namespace FastGame.Samples
     /// </summary>
     public sealed class FastGameSandboxMultiplayerSample : MonoBehaviour
     {
-        public string ApiBaseUrl = "api.localhost";
+        public string ApiBaseUrl = "http://api.localhost/api/v1";
         public string GameServerUrlOverride = "";
         public string Identity = "admin@example.com";
         public string Password = "changethis";

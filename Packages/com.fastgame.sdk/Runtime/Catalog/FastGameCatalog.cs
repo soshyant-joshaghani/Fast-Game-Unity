@@ -56,6 +56,10 @@ namespace FastGame
                 FastGameJson.GetBool(o, "verify_email"));
         }
 
+        /// <summary>
+        /// Legacy public WS URL. Prefer <see cref="FastGameRealtime.JoinMapAsync"/> /
+        /// seat <c>game_server_url</c> for online join.
+        /// </summary>
         public async Task<GameServerInfo> GetGameServerAsync()
         {
             var text = await _http.RequestRawAsync("GET", "/utils/game-server/");

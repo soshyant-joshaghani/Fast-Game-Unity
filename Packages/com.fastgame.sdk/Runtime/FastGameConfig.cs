@@ -7,10 +7,10 @@ namespace FastGame
     public class FastGameConfig
     {
         /// <summary>
-        /// API host or full base. Host-only values like <c>api.localhost</c> normalize to
-        /// <c>http://api.localhost/api/v1</c> (same as Unreal).
+        /// Full API base URL (documented default <c>http://api.localhost/api/v1</c>).
+        /// Host-only values like <c>api.localhost</c> still normalize to that form (same as Unreal).
         /// </summary>
-        public string ApiBaseUrl = "api.localhost";
+        public string ApiBaseUrl = "http://api.localhost/api/v1";
 
         /// <summary>
         /// Active catalog game (storage NAME). Set once via Initialize Game.

@@ -33,7 +33,7 @@ Generic mobile-first specs often assume a greenfield project. This repo already 
 | Auth, catalog, content, shop, ads | **`com.fastgame.sdk`** → [package README](../Packages/com.fastgame.sdk/README.md) |
 | Scene wiring (UE-like) | **Fast Game → Client / Auth / Shop** components |
 | Android store IAP | **FastGameStore** inside the package — one flavor **per APK**; use **Unlock Sku** only |
-| Backend | [`fast-game`](../fast-game/Readme.md) dev stack (`api.localhost` → `http://api.localhost/api/v1`) |
+| Backend | [`fast-game`](../fast-game/Readme.md) dev stack (`http://api.localhost/api/v1`) |
 | Multiplayer rooms | **Sibling** [Colyseus Unity SDK](https://github.com/colyseus/colyseus-unity-sdk) — `Scripts/fetch-colyseus.bat` → `Packages/io.colyseus.sdk/` |
 | API contract | [`CONTRACT.md`](../CONTRACT.md) |
 

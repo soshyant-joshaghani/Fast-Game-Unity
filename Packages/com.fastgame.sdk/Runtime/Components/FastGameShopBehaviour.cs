@@ -253,22 +253,28 @@ namespace FastGame
             }
         }
 
-        /// <summary>Deprecated — use UnlockSku.</summary>
+        /// <summary>Obsolete — use <see cref="UnlockSku"/>.</summary>
+        [Obsolete("Use UnlockSku / UnlockSkuAsync.")]
         public void Buy() => _ = Run(BuyAsync);
 
+        [Obsolete("Use UnlockSkuLine / UnlockSku.")]
         public void BuyLine(ShopLine line)
         {
             SelectedLine = line;
             _ = Run(BuyAsync);
         }
 
+        [Obsolete("Use UnlockSkuAsync.")]
         public async Task BuyAsync()
         {
             await UnlockSkuAsync();
         }
 
+        /// <summary>Obsolete — use <see cref="CompleteUnlock"/> / Shop Progress.</summary>
+        [Obsolete("Use CompleteUnlock / CompleteUnlockAsync.")]
         public void VerifyPending() => _ = Run(VerifyPendingAsync);
 
+        [Obsolete("Use CompleteUnlockAsync.")]
         public async Task VerifyPendingAsync()
         {
             try

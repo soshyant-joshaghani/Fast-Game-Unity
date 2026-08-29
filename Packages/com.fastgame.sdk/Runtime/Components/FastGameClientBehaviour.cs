@@ -12,8 +12,8 @@ namespace FastGame
     {
         public static FastGameClientBehaviour Instance { get; private set; }
 
-        [Tooltip("Host only (api.localhost) or full URL. Host-only → http://…/api/v1. Initialize Client.")]
-        public string ApiBaseUrl = "api.localhost";
+        [Tooltip("Initialize Client: full API base (prefer http://api.localhost/api/v1). Host-only api.localhost also normalizes.")]
+        public string ApiBaseUrl = "http://api.localhost/api/v1";
 
         [Tooltip("Initialize Game: active catalog game (storage NAME). Auth OTP / recovery use this.")]
         public string GameCode = "sandbox-capsule";
@@ -94,7 +94,8 @@ namespace FastGame
             return true;
         }
 
-        /// <summary>Legacy wrapper: Initialize Game then Initialize Client.</summary>
+        /// <summary>Obsolete — call <see cref="InitializeGame"/> (1×) then 1-arg <see cref="InitializeClient(string)"/> (N×).</summary>
+        [System.Obsolete("Use InitializeGame(gameCode, storePlatform) then InitializeClient(apiBaseUrl).")]
         public bool InitializeClient(string apiBaseUrl, string gameCode, string storePlatform)
         {
             var gameOk = InitializeGame(gameCode, storePlatform);

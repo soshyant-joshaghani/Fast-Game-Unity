@@ -3,10 +3,21 @@ using System.Threading.Tasks;
 using FastGame.Models;
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.SceneManagement;
 using UnityEngine.Serialization;
+using UnityEngine.UI;
 
 namespace FastGame
 {
+    /// <summary>Why <see cref="FastGameAuthBehaviour.OnAuthComplete"/> fired.</summary>
+    public enum FastGameAuthCompleteReason
+    {
+        Login,
+        Signup,
+        PasswordRecovery,
+        AlreadyAuthenticated
+    }
+
     /// <summary>ENTER route — mirrors UE EFastGameEnterRoute exec pins.</summary>
     public enum FastGameEnterRoute
     {
@@ -23,20 +34,24 @@ namespace FastGame
     [Serializable] public class FastGameEnterResultEvent : UnityEvent<FastGameEnterRoute, bool, string> { }
     [Serializable] public class FastGameUserEvent : UnityEvent<UserProfile> { }
 
+    [Serializable] public class FastGameAuthCompleteEvent : UnityEvent<FastGameAuthCompleteReason> { }
+
     /// <summary>
     /// Auth UI controller (UE Fast Game Auth + page widgets).
-    /// Hierarchy example:
+    /// Designer vocabulary matches UE: Enter → Enter Password / Verify / Signup / Failed;
+    /// Send Auth Code / Verify Auth Code → Signup | Assign New Password; Assign New Password.
+    /// Unity hierarchy (MAP_2_AUTH):
     /// <code>
-    /// AUTH (global canvas)
-    ///   Enter ID Canvas
-    ///   Enter Password Canvas
-    ///   Enter Signup Canvas
-    ///   Enter Recovery OTP Canvas
-    ///   Enter Recovery Reset Canvas
+    /// Auth_Canvas
+    ///   BG
+    ///   EnterID_Canvas      → EnterIdCanvas
+    ///   EnterPassword_Canvas
+    ///   Signup_Canvas       → EnterSignupCanvas
+    ///   OTP_Canvas          → EnterRecoveryOtpCanvas
+    ///   NewPassword_Canvas  → EnterRecoveryResetCanvas
+    ///   Error               → ErrorText
     /// </code>
-    /// Buttons → <see cref="Enter"/> / <see cref="Login"/> / <see cref="Signup"/> /
-    /// <see cref="BeginForgot"/> / <see cref="SendCode"/> / <see cref="VerifyCode"/> /
-    /// <see cref="ResetPassword"/> / <see cref="UpdateFullName"/> / <see cref="Back"/>.
+    /// Assign canvases + buttons on this component — buttons wire in Awake when set.
     /// </summary>
     [AddComponentMenu("Fast Game/Auth")]
     public sealed class FastGameAuthBehaviour : MonoBehaviour
@@ -45,20 +60,24 @@ namespace FastGame
         [Tooltip("Leave empty to use FastGameClientBehaviour.Instance")]
         public FastGameClientBehaviour ClientHost;
 
-        [Header("Pages (canvases under AUTH)")]
-        [Tooltip("Optional global AUTH root — kept active; leave empty if unused.")]
-        public GameObject AuthCanvas;
-        [Tooltip("Enter identity page (start).")]
+        [Header("Pages (canvases under Auth_Canvas)")]
+        [Tooltip("Root AUTH canvas — kept active.")]
+        [FormerlySerializedAs("AuthCanvas")]
+        public GameObject AuthRootCanvas;
+        [Tooltip("Enter ID page (EnterID_Canvas).")]
+        [FormerlySerializedAs("EnterIdCanvas")]
         public GameObject EnterIdCanvas;
-        [Tooltip("Existing user — enter password.")]
+        [Tooltip("Existing user — enter password (EnterPassword_Canvas).")]
         public GameObject EnterPasswordCanvas;
-        [Tooltip("New user — signup.")]
-        public GameObject EnterSignupCanvas;
-        [Tooltip("OTP send / verify (shared by recovery and signup verification).")]
-        [FormerlySerializedAs("EnterRecoveryCanvas")]
-        public GameObject EnterRecoveryOtpCanvas;
-        [Tooltip("Recovery step 3: new password + confirm (after OTP verified).")]
-        public GameObject EnterRecoveryResetCanvas;
+        [Tooltip("New user — signup (Signup_Canvas).")]
+        [FormerlySerializedAs("EnterSignupCanvas")]
+        public GameObject SignupCanvas;
+        [Tooltip("OTP send / verify (OTP_Canvas).")]
+        [FormerlySerializedAs("EnterRecoveryOtpCanvas")]
+        public GameObject OtpCanvas;
+        [Tooltip("Recovery: new password + confirm (NewPassword_Canvas).")]
+        [FormerlySerializedAs("EnterRecoveryResetCanvas")]
+        public GameObject NewPasswordCanvas;
         [Tooltip("If true, Enter routes auto-switch pages (no need to wire SetActive in events).")]
         public bool AutoSwitchPages = true;
         [Tooltip("After ResetPassword succeeds, show Enter Password canvas for login.")]
@@ -66,7 +85,25 @@ namespace FastGame
         [Tooltip("Show Enter ID page on Awake.")]
         public bool ShowEnterIdOnAwake = true;
 
-        [Header("Inputs (manual fallbacks if UI empty)")]
+        [Header("Buttons (optional — OnClick wired in Awake)")]
+        public Button EnterButton;
+        public Button LoginButton;
+        public Button SignupButton;
+        public Button SendCodeButton;
+        public Button VerifyButton;
+        public Button ResetPasswordButton;
+        [Tooltip("Enter Password canvas — returns to Enter ID (keeps typed identity).")]
+        public Button BackFromPasswordButton;
+        [Tooltip("OTP canvas — returns to Enter ID.")]
+        public Button BackFromOtpButton;
+        [Tooltip("Enter Password canvas — forgot password → OTP recovery.")]
+        public Button ForgotPasswordButton;
+        [Obsolete("Use BackFromPasswordButton / BackFromOtpButton on the relevant canvases.")]
+        public Button BackButton;
+
+        [Header("OTP")]
+        [Tooltip("When OTP page opens (signup verify or recovery), send code automatically once.")]
+        public bool AutoSendOtpOnShow = true;
         public string Identity;
         public string Password;
         public string PasswordConfirm;
@@ -100,6 +137,7 @@ namespace FastGame
         public Component RecoveryPasswordConfirmField;
 
         public bool Busy { get; private set; }
+        bool _otpAutoSentThisVisit;
 
         [Header("ENTER routes (extra hooks; pages switch automatically when AutoSwitchPages)")]
         public UnityEvent OnLoginRoute;
@@ -120,6 +158,8 @@ namespace FastGame
         public UnityEvent OnBackToEnterId;
 
         [Header("Auth results")]
+        [Tooltip("Fires once when the player has a session (login, signup, or password recovery).")]
+        public FastGameAuthCompleteEvent OnAuthComplete;
         public FastGameAuthResultEvent OnLoginComplete;
         public FastGameAuthResultEvent OnSignupComplete;
         public FastGameAuthResultEvent OnRecoveryStepComplete;
@@ -127,9 +167,23 @@ namespace FastGame
         public FastGameBoolEvent OnCheckAuthenticationComplete;
         public FastGameStringEvent OnError;
 
+        [Header("Next scene")]
+        [Tooltip("Scene to load after auth completes.")]
+        public string NextScene = FastGameSceneNames.Download;
+
+        [Tooltip("Load NextScene automatically when auth completes.")]
+        public bool AutoLoadNextOnComplete = true;
+
+        [Tooltip("If already logged in on enter, skip UI and load the next scene.")]
+        public bool CompleteWhenAlreadyAuthenticated = true;
+
+        public FastGameSceneCompleteEvent OnSceneComplete;
+
         public FastGameEnterResult LastEnter { get; private set; }
         public FastGameEnterRoute LastEnterRoute { get; private set; } = FastGameEnterRoute.Failed;
-        public bool ForgotPassword { get; private set; }
+        public bool IsForgotPasswordFlow { get; private set; }
+
+        bool _sceneCompleted;
 
         public bool IsAuthenticated =>
             ClientHost != null ? ClientHost.Client?.Auth.IsAuthenticated == true
@@ -139,10 +193,56 @@ namespace FastGame
 
         void Awake()
         {
-            if (AuthCanvas != null)
-                AuthCanvas.SetActive(true);
+            WireButtons();
+            if (AuthRootCanvas != null)
+                AuthRootCanvas.SetActive(true);
             if (ShowEnterIdOnAwake)
                 ShowEnterIdPage();
+        }
+
+        void WireButtons()
+        {
+            Wire(EnterButton, Enter);
+            Wire(LoginButton, Login);
+            Wire(SignupButton, Signup);
+            Wire(SendCodeButton, SendCode);
+            Wire(VerifyButton, VerifyCode);
+            Wire(ResetPasswordButton, ResetPassword);
+            Wire(BackFromPasswordButton, BackToEnterId);
+            Wire(BackFromOtpButton, BackToEnterId);
+            Wire(ForgotPasswordButton, BeginForgotPassword);
+#pragma warning disable CS0618
+            Wire(BackButton, BackToEnterId);
+#pragma warning restore CS0618
+        }
+
+        void Start()
+        {
+            if (!CompleteWhenAlreadyAuthenticated || !IsAuthenticated)
+                return;
+            RaiseAuthComplete(FastGameAuthCompleteReason.AlreadyAuthenticated);
+        }
+
+        static void Wire(Button button, UnityAction action)
+        {
+            if (button != null)
+                button.onClick.AddListener(action);
+        }
+
+        void RaiseAuthComplete(FastGameAuthCompleteReason reason)
+        {
+            OnAuthComplete?.Invoke(reason);
+            CompleteScene();
+        }
+
+        public void CompleteScene()
+        {
+            if (_sceneCompleted)
+                return;
+            _sceneCompleted = true;
+            OnSceneComplete?.Invoke();
+            if (AutoLoadNextOnComplete && !string.IsNullOrWhiteSpace(NextScene))
+                SceneManager.LoadScene(NextScene);
         }
 
         string ReadIdentity() => FastGameUiText.Read(IdentityField, Identity).Trim();
@@ -167,22 +267,37 @@ namespace FastGame
 
         public void ShowEnterIdPage() => ShowPage(EnterIdCanvas);
         public void ShowEnterPasswordPage() => ShowPage(EnterPasswordCanvas);
-        public void ShowEnterSignupPage() => ShowPage(EnterSignupCanvas);
-        public void ShowEnterRecoveryOtpPage() => ShowPage(EnterRecoveryOtpCanvas);
-        public void ShowEnterRecoveryResetPage() => ShowPage(EnterRecoveryResetCanvas);
+        public void ShowEnterSignupPage() => ShowPage(SignupCanvas);
+        public void ShowEnterRecoveryOtpPage() => ShowPage(OtpCanvas);
+        public void ShowEnterRecoveryResetPage() => ShowPage(NewPasswordCanvas);
 
         /// <summary>Alias — recovery starts on OTP canvas.</summary>
         public void ShowEnterRecoveryPage() => ShowEnterRecoveryOtpPage();
 
         public void ShowPage(GameObject page)
         {
-            if (AuthCanvas != null)
-                AuthCanvas.SetActive(true);
+            if (AuthRootCanvas != null)
+                AuthRootCanvas.SetActive(true);
+            var wasOtp = OtpCanvas != null && OtpCanvas.activeSelf;
             SetPageActive(EnterIdCanvas, page == EnterIdCanvas);
             SetPageActive(EnterPasswordCanvas, page == EnterPasswordCanvas);
-            SetPageActive(EnterSignupCanvas, page == EnterSignupCanvas);
-            SetPageActive(EnterRecoveryOtpCanvas, page == EnterRecoveryOtpCanvas);
-            SetPageActive(EnterRecoveryResetCanvas, page == EnterRecoveryResetCanvas);
+            SetPageActive(SignupCanvas, page == SignupCanvas);
+            SetPageActive(OtpCanvas, page == OtpCanvas);
+            SetPageActive(NewPasswordCanvas, page == NewPasswordCanvas);
+            if (page != OtpCanvas)
+                _otpAutoSentThisVisit = false;
+            else if (!wasOtp)
+                MaybeAutoSendOtp();
+        }
+
+        void MaybeAutoSendOtp()
+        {
+            if (!AutoSendOtpOnShow || _otpAutoSentThisVisit || Busy)
+                return;
+            if (LastEnterRoute != FastGameEnterRoute.VerifyId && !IsForgotPasswordFlow)
+                return;
+            _otpAutoSentThisVisit = true;
+            SendCode();
         }
 
         static void SetPageActive(GameObject page, bool active)
@@ -226,29 +341,25 @@ namespace FastGame
         public void Register() => Signup();
         public void CompleteAccount() => Signup();
 
-        /// <summary>From Login screen — next OTP is recovery, then Set Password.</summary>
-        public void BeginForgot()
+        /// <summary>Forgot password — from Enter Password → OTP recovery (auto-sends code when enabled).</summary>
+        public void BeginForgotPassword()
         {
-            ForgotPassword = true;
+            IsForgotPasswordFlow = true;
+            ClearError();
             if (AutoSwitchPages)
                 ShowEnterRecoveryOtpPage();
         }
 
-        /// <summary>After login — PATCH display name.</summary>
-        public void UpdateFullName() => _ = Run(UpdateFullNameAsync);
+        /// <summary>Back to Enter ID from Enter Password or OTP (keeps identity field).</summary>
+        public void BackToEnterId()
+        {
+            IsForgotPasswordFlow = false;
+            ClearError();
+            ShowEnterIdPage();
+            OnBackToEnterId?.Invoke();
+        }
 
-        /// <summary>OTP canvas — send code (signup verify or recovery).</summary>
-        public void SendCode() => _ = Run(SendOtpAsync);
-
-        /// <summary>OTP canvas — verify code then advance to Signup or Reset.</summary>
-        public void VerifyCode() => _ = Run(VerifyOtpAsync);
-
-        /// <summary>Enter Recovery canvas — recovery 3/3 set new password.</summary>
-        public void ResetPassword() => _ = Run(ConfirmPasswordRecoveryAsync);
-
-        /// <summary>
-        /// Back — clear ENTER identity + input fields, return to Enter ID canvas.
-        /// </summary>
+        /// <summary>Full reset — clears identity and all fields (legacy).</summary>
         public void Back()
         {
             string clearErr = null;
@@ -277,7 +388,7 @@ namespace FastGame
 
             LastEnter = null;
             LastEnterRoute = FastGameEnterRoute.Failed;
-            ForgotPassword = false;
+            IsForgotPasswordFlow = false;
             ShowEnterIdPage();
             OnBackToEnterId?.Invoke();
 
@@ -286,6 +397,21 @@ namespace FastGame
             else
                 ClearError();
         }
+
+        /// <summary>After login — PATCH display name.</summary>
+        public void UpdateFullName() => _ = Run(UpdateFullNameAsync);
+
+        /// <summary>OTP canvas — send / resend code (signup verify or recovery).</summary>
+        public void SendCode() => _ = Run(SendOtpAsync);
+
+        /// <summary>OTP canvas — verify code then advance to Signup or Reset.</summary>
+        public void VerifyCode() => _ = Run(VerifyOtpAsync);
+
+        /// <summary>Enter Recovery canvas — recovery 3/3 set new password.</summary>
+        public void ResetPassword() => _ = Run(ConfirmPasswordRecoveryAsync);
+
+        [Obsolete("Use BeginForgotPassword().")]
+        public void BeginForgot() => BeginForgotPassword();
 
         // --- Async API ------------------------------------------------------
 
@@ -319,7 +445,7 @@ namespace FastGame
                 else
                     route = FastGameEnterRoute.Login;
 
-                ForgotPassword = false;
+                IsForgotPasswordFlow = false;
                 LastEnterRoute = route;
                 ApplyEnterRoute(route);
                 OnEnterComplete?.Invoke(route, true, "");
@@ -365,6 +491,7 @@ namespace FastGame
                 Password = password;
                 await Client.Auth.LoginAsync(identity, password, Channel);
                 OnLoginComplete?.Invoke(true, 200, "ok");
+                RaiseAuthComplete(FastGameAuthCompleteReason.Login);
             }
             catch (Exception e)
             {
@@ -391,6 +518,7 @@ namespace FastGame
                     await Client.Auth.SignupAsync(null, password, confirm, fullName, null);
                 OnSignupComplete?.Invoke(true, 200, "ok");
                 OnLoginComplete?.Invoke(true, 200, "ok");
+                RaiseAuthComplete(FastGameAuthCompleteReason.Signup);
             }
             catch (Exception e)
             {
@@ -407,7 +535,7 @@ namespace FastGame
             {
                 if (LastEnterRoute == FastGameEnterRoute.VerifyId)
                     await Client.Auth.RequestSignupVerificationAsync(ReadIdentity());
-                else if (ForgotPassword)
+                else if (IsForgotPasswordFlow)
                     await Client.Auth.RequestPasswordRecoveryAsync(ReadIdentity());
                 else
                     throw new FastGameException("Send Auth Code: use after Verify Id or Begin Forgot");
@@ -438,7 +566,7 @@ namespace FastGame
                     return;
                 }
 
-                if (!ForgotPassword)
+                if (!IsForgotPasswordFlow)
                     throw new FastGameException("Verify Auth Code: use after Verify Id or Begin Forgot");
 
                 await Client.Auth.VerifyPasswordRecoveryAsync(ReadIdentity(), ReadOtp());
@@ -455,7 +583,12 @@ namespace FastGame
 
         public async Task VerifyPasswordRecoveryAsync() => await VerifyOtpAsync();
 
+        /// <summary>Assign New Password (recovery confirm).</summary>
+        public void AssignNewPassword() => ResetPassword();
         public void ConfirmPasswordRecovery() => ResetPassword();
+
+        /// <summary>Obsolete — use <see cref="AssignNewPassword"/>.</summary>
+        [Obsolete("Use Assign New Password (AssignNewPassword / ResetPassword).")]
         public void SetPassword() => ResetPassword();
 
         public async Task UpdateFullNameAsync()
@@ -487,6 +620,7 @@ namespace FastGame
                     ReadIdentity(), password, confirm);
                 OnRecoveryStepComplete?.Invoke(true, 200, "password set");
                 OnLoginComplete?.Invoke(true, 200, "ok");
+                RaiseAuthComplete(FastGameAuthCompleteReason.PasswordRecovery);
             }
             catch (Exception e)
             {

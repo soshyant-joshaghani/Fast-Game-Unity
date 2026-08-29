@@ -170,6 +170,18 @@ namespace FastGame.Models
         public string Url;
     }
 
+    /// <summary>POST /apps/games/realtime/seat — JoinMap ticket (prefer over GetGameServer).</summary>
+    public sealed class SeatMintResult
+    {
+        public string SeatToken;
+        public string ExpiresAt;
+        public string GameServerUrl;
+        public string RoomName;
+        public string GameId;
+        public string MapId;
+        public string ModeId;
+    }
+
     /// <summary>Public user profile from GET /base/login/me (no password).</summary>
     public sealed class UserProfile
     {
@@ -242,5 +254,14 @@ namespace FastGame.Models
         public string CampaignId;
         public string Timestamp;
         public Dictionary<string, object> Extras = new Dictionary<string, object>();
+    }
+
+    public sealed class CollectibleDef
+    {
+        public string Id;
+        public string Code;
+        public string Label;
+        public string ImageUrl;
+        public bool Locked;
     }
 }

@@ -3,6 +3,8 @@
 ## ApiOnly
 
 Attach `FastGameApiOnlySample`. Fast Game SDK only — no Colyseus.
+Uses **Unlock Sku** / **Complete Unlock** (not obsolete Buy* / VerifyPending).
+`ApiBaseUrl` default: `http://api.localhost/api/v1`.
 
 ## SandboxMultiplayer
 

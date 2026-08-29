@@ -5,6 +5,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 UNITY = ROOT / "Packages/com.fastgame.sdk/Runtime"
+SAMPLES = ROOT / "Packages/com.fastgame.sdk/Samples~"
 
 
 def _read(rel: Path) -> str:
@@ -35,20 +36,36 @@ def test_unity_unlock_and_ensure_setup():
 
 def test_unity_initialize_game_vs_client():
     client = _read(UNITY / "Components/FastGameClientBehaviour.cs")
+    assert "public bool InitializeClient(string apiBaseUrl)" in client
+    assert "public bool InitializeGame" in client
+    three_arg = "public bool InitializeClient(string apiBaseUrl, string gameCode, string storePlatform)"
+    assert three_arg in client
+    # 3-arg kept for compat but must be Obsolete
+    idx = client.find(three_arg)
+    prelude = client[max(0, idx - 280) : idx]
+    assert "[Obsolete" in prelude or "System.Obsolete" in prelude
     game_fn = client[
         client.find("public bool InitializeGame") : client.find(
             "public bool InitializeClient(string apiBaseUrl)"
         )
     ]
     net_fn = client[
-        client.find("public bool InitializeClient(string apiBaseUrl)") : client.find(
-            "public bool InitializeClient(string apiBaseUrl, string gameCode"
-        )
+        client.find("public bool InitializeClient(string apiBaseUrl)") : client.find(three_arg)
     ]
     assert "EnsureSetup" in game_fn
     assert "EnsureSetup" not in net_fn
     assert "!InitializeGame()" in client
     assert "call Initialize Game" in _read(UNITY / "Shop/FastGameShop.cs")
+
+
+def test_unity_samples_no_buy_or_three_arg_init():
+    api_only = _read(SAMPLES / "ApiOnly/FastGameApiOnlySample.cs")
+    assert "BuyAsync" not in api_only
+    assert "VerifyPendingAsync" not in api_only
+    assert "UnlockSkuAsync" in api_only
+    assert "CompleteUnlockAsync" in api_only
+    assert "InitializeClient(" not in api_only or "InitializeClient(string apiBaseUrl, string gameCode" not in api_only
+    assert "http://api.localhost/api/v1" in api_only
 
 
 def test_unity_store_lock_on_login():
@@ -100,6 +117,7 @@ def test_unity_modules_present():
         "Auth/FastGameAuth.cs",
         "Catalog/FastGameCatalog.cs",
         "Content/FastGameContent.cs",
+        "Realtime/FastGameRealtime.cs",
         "Shop/FastGameShop.cs",
         "Ads/FastGameAds.cs",
         "Assets/FastGameAssets.cs",
@@ -109,3 +127,48 @@ def test_unity_modules_present():
     ):
         path = UNITY / rel
         assert path.is_file(), rel
+
+
+def test_unity_tip_facade_content_methods():
+    content = _read(UNITY / "Content/FastGameContent.cs")
+    contract = _read(ROOT / "CONTRACT.md")
+    assert "GetBootstrapAsync" in content
+    assert "GetGameConfigAsync" in content
+    assert "GetMapConfigAsync" in content
+    assert "GetCharacterAsync" in content
+    assert "GetDialogueAsync" in content
+    assert "GetQuizAsync" in content
+    assert "GetStringsAsync" in content
+    assert "/apps/games/tip/" in content
+    assert "/apps/games/strings/" in content
+    assert "/bootstrap" in content
+    assert '"/game"' in content or "/game\"" in content or '}/game"' in content
+    assert "GetBootstrap" in contract
+    assert "GetGameConfig" in contract
+    assert "GetMapConfig" in contract
+    assert "deprecated for players" in contract.lower()
+
+
+def test_unity_progress_get_save():
+    progress = _read(UNITY / "Progress/FastGameProgress.cs")
+    client = _read(UNITY / "FastGameClient.cs")
+    contract = _read(ROOT / "CONTRACT.md")
+    assert "GetAsync" in progress
+    assert "SaveAsync" in progress
+    assert "/apps/games/progress/" in progress
+    assert "FastGameProgress Progress" in client
+    assert "client.Progress" in contract
+    assert "/apps/games/progress/" in contract
+
+
+def test_unity_realtime_joinmap_seat():
+    realtime = _read(UNITY / "Realtime/FastGameRealtime.cs")
+    client = _read(UNITY / "FastGameClient.cs")
+    contract = _read(ROOT / "CONTRACT.md")
+    assert "MintSeatAsync" in realtime
+    assert "JoinMapAsync" in realtime
+    assert "/apps/games/realtime/seat" in realtime
+    assert "FastGameRealtime Realtime" in client
+    assert "Realtime.JoinMap" in contract
+    assert "/apps/games/realtime/seat" in contract
+    assert "designer-chosen" in contract.lower() or "designer-chosen" in contract

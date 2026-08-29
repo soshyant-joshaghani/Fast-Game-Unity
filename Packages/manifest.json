@@ -1,12 +1,15 @@
 {
   "dependencies": {
-    "com.unity.ugui": "2.0.0",
+    "com.fastgame.sdk": "file:com.fastgame.sdk",
+    "com.unity.render-pipelines.universal": "17.5.0",
+    "com.unity.ugui": "2.5.0",
+    "com.unity.visualscripting": "1.9.12",
+    "io.colyseus.sdk": "file:io.colyseus.sdk",
     "com.unity.modules.androidjni": "1.0.0",
     "com.unity.modules.audio": "1.0.0",
     "com.unity.modules.imgui": "1.0.0",
     "com.unity.modules.jsonserialize": "1.0.0",
-    "com.unity.modules.unitywebrequest": "1.0.0",
-    "com.fastgame.sdk": "file:com.fastgame.sdk",
-    "io.colyseus.sdk": "file:io.colyseus.sdk"
+    "com.unity.modules.physicscore2d": "1.0.0",
+    "com.unity.modules.unitywebrequest": "1.0.0"
   }
 }

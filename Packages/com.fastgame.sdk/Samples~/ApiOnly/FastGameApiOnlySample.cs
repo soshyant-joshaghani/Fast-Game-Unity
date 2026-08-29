@@ -7,12 +7,12 @@ using UnityEngine;
 namespace FastGame.Samples
 {
     /// <summary>
-    /// API-only demo: login, PrepareSession (map/chr/stats), shop list / claim / buy / verify.
-    /// No Colyseus required.
+    /// API-only demo: login, PrepareSession (map/chr/stats), shop list / claim / Unlock Sku / Complete Unlock.
+    /// No Colyseus required. Does not teach obsolete Buy* / VerifyPending.
     /// </summary>
     public sealed class FastGameApiOnlySample : MonoBehaviour
     {
-        public string ApiBaseUrl = "api.localhost";
+        public string ApiBaseUrl = "http://api.localhost/api/v1";
         public string Identity = "admin@example.com";
         public string Password = "changethis";
         public string GameId = "sandbox-capsule";
@@ -31,6 +31,7 @@ namespace FastGame.Samples
             _client = new FastGameClient(new FastGameConfig
             {
                 ApiBaseUrl = ApiBaseUrl,
+                GameCode = GameId,
             });
         }
 
@@ -49,8 +50,8 @@ namespace FastGame.Samples
             if (GUILayout.Button("3. Refresh shop"))
                 _ = RefreshShop();
 
-            if (_client.Shop.HasPendingPayment && GUILayout.Button("Verify pending payment"))
-                _ = Verify();
+            if (_client.Shop.HasPendingPayment && GUILayout.Button("Complete Unlock (pending)"))
+                _ = CompleteUnlock();
 
             _scroll = GUILayout.BeginScrollView(_scroll, GUILayout.Height(320));
             foreach (var line in _shop)
@@ -68,8 +69,8 @@ namespace FastGame.Samples
                         if (GUILayout.Button("Claim"))
                             _ = Claim(line);
                     }
-                    else if (GUILayout.Button("Buy"))
-                        _ = Buy(line);
+                    else if (GUILayout.Button("Unlock Sku"))
+                        _ = Unlock(line);
                 }
                 GUILayout.EndHorizontal();
             }
@@ -112,11 +113,11 @@ namespace FastGame.Samples
             catch (System.Exception e) { _status = e.Message; }
         }
 
-        async Task Verify()
+        async Task CompleteUnlock()
         {
             try
             {
-                var res = await _client.Shop.VerifyPendingAsync();
+                var res = await _client.Shop.CompleteUnlockAsync();
                 _status = res.Success ? "purchase ok" : "payment failed";
                 _shop = await _client.Shop.GetCatalogAsync(GameId);
             }
@@ -134,13 +135,20 @@ namespace FastGame.Samples
             catch (System.Exception e) { _status = e.Message; }
         }
 
-        async Task Buy(ShopLine line)
+        async Task Unlock(ShopLine line)
         {
             try
             {
-                _status = "opening payment…";
-                await _client.Shop.BuyAsync(line, PaymentCallbackUrl);
-                _status = "browser opened — return and Verify pending";
+                _status = "Unlock Sku…";
+                var result = await _client.Shop.UnlockSkuAsync(
+                    line.GameCode, line.SkuKind, line.SkuId, PaymentCallbackUrl);
+                if (result.Owned)
+                    _status = "owned " + line.SkuId;
+                else if (result.Pending)
+                    _status = "pending — return and Complete Unlock";
+                else
+                    _status = "unlock: " + (result.Mode ?? "unknown");
+                _shop = await _client.Shop.GetCatalogAsync(GameId);
             }
             catch (System.Exception e) { _status = e.Message; }
         }

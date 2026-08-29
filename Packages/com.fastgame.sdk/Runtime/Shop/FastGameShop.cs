@@ -258,13 +258,14 @@ namespace FastGame
                 foreach (var item in list)
                 {
                     var id = (item?.ToString() ?? "").Trim();
-                    if (!string.IsNullOrEmpty(id) && !ids.Contains(id, StringComparer.OrdinalIgnoreCase))
+                    if (!string.IsNullOrEmpty(id)
+                        && !ids.Exists(x => string.Equals(x, id, StringComparison.OrdinalIgnoreCase)))
                         ids.Add(id);
                 }
             }
             var single = FastGameJson.GetString(o, "store_product_id");
             if (!string.IsNullOrWhiteSpace(single)
-                && !ids.Contains(single.Trim(), StringComparer.OrdinalIgnoreCase))
+                && !ids.Exists(x => string.Equals(x, single.Trim(), StringComparison.OrdinalIgnoreCase)))
             {
                 ids.Insert(0, single.Trim());
             }
@@ -582,16 +583,20 @@ namespace FastGame
             };
         }
 
+        /// <summary>Obsolete — use <see cref="UnlockSkuAsync"/>.</summary>
+        [Obsolete("Use UnlockSkuAsync.")]
         public async Task<PaymentInitiateResult> BuyAsync(ShopLine line, string callbackUrl)
         {
             return await BuyWithProviderAsync(line, callbackUrl, "zarinpal", "rial", null);
         }
 
+        [Obsolete("Use UnlockSkuAsync.")]
         public async Task<PaymentInitiateResult> BuyAsync(ShopLine line, string callbackUrl, string discountCode)
         {
             return await BuyWithProviderAsync(line, callbackUrl, "zarinpal", "rial", discountCode);
         }
 
+        [Obsolete("Use UnlockSkuAsync.")]
         public async Task<PaymentInitiateResult> BuyWithProviderAsync(
             ShopLine line,
             string callbackUrl,
@@ -601,6 +606,7 @@ namespace FastGame
             return await BuyWithProviderAsync(line, callbackUrl, provider, currency, null);
         }
 
+        [Obsolete("Use UnlockSkuAsync.")]
         public async Task<PaymentInitiateResult> BuyWithProviderAsync(
             ShopLine line,
             string callbackUrl,
@@ -718,6 +724,7 @@ namespace FastGame
             return zresult;
         }
 
+        [Obsolete("Use CompleteUnlockAsync.")]
         public async Task<PaymentVerifyResult> SubmitBillingAsync(string purchaseToken)
         {
             var raw = PlayerPrefs.GetString(_config.PendingPaymentPrefsKey, "");
@@ -752,6 +759,7 @@ namespace FastGame
             return new PaymentVerifyResult { Success = FastGameJson.GetBool(o, "success") };
         }
 
+        [Obsolete("Use CompleteUnlockAsync.")]
         public async Task<PaymentVerifyResult> FinalizeSteamAsync()
         {
             var raw = PlayerPrefs.GetString(_config.PendingPaymentPrefsKey, "");
@@ -783,6 +791,7 @@ namespace FastGame
             return new PaymentVerifyResult { Success = FastGameJson.GetBool(o, "success") };
         }
 
+        [Obsolete("Use CompleteUnlockAsync.")]
         public async Task<PaymentVerifyResult> VerifyPendingAsync(string authority = null)
         {
             var raw = PlayerPrefs.GetString(_config.PendingPaymentPrefsKey, "");

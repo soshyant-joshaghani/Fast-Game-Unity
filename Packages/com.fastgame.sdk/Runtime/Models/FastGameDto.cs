@@ -64,6 +64,9 @@ namespace FastGame
                     MapId = FastGameJson.GetString(m, "map_id"),
                     Label = FastGameJson.GetString(m, "label"),
                     EngineScene = FastGameJson.GetString(m, "engine_scene"),
+                    MapKind = ParseMapKind(m),
+                    HubMapIds = ParseStringList(m, "hub_map_ids"),
+                    RuntimeSettings = ParseMapRuntimeSettings(FastGameJson.GetObject(m, "runtime_settings")),
                     Purchasable = FastGameJson.GetBool(m, "purchasable"),
                     Price = FastGameJson.GetInt(m, "price"),
                     Translations = ParseTranslations(FastGameJson.GetObject(m, "translations")),
@@ -102,16 +105,37 @@ namespace FastGame
         static List<string> ParseStringList(Dictionary<string, object> obj, string key)
         {
             var list = new List<string>();
-            var raw = FastGameJson.GetArray(obj, key);
-            if (raw == null)
-                return list;
-            foreach (var item in raw)
+            foreach (var item in FastGameJson.GetArray(obj, key) ?? new List<object>())
             {
-                var s = item?.ToString()?.Trim();
-                if (!string.IsNullOrEmpty(s))
-                    list.Add(s);
+                if (item != null) list.Add(item.ToString());
             }
             return list;
+        }
+
+        static string ParseMapKind(Dictionary<string, object> m)
+        {
+            var kind = FastGameJson.GetString(m, "map_kind");
+            if (string.IsNullOrWhiteSpace(kind))
+                kind = FastGameJson.GetString(m, "kind");
+            kind = (kind ?? "level").Trim().ToLowerInvariant();
+            return kind == "hub" ? "hub" : "level";
+        }
+
+        static MapRuntimeSettings ParseMapRuntimeSettings(Dictionary<string, object> raw)
+        {
+            var settings = new MapRuntimeSettings();
+            if (raw == null) return settings;
+            settings.AbilityAllowlist = ParseStringList(raw, "ability_allowlist");
+            if (raw.ContainsKey("chat_enabled"))
+                settings.ChatEnabled = FastGameJson.GetBool(raw, "chat_enabled", true);
+            if (raw.ContainsKey("emoji_enabled"))
+                settings.EmojiEnabled = FastGameJson.GetBool(raw, "emoji_enabled", true);
+            if (raw.TryGetValue("max_players", out var mp) && mp != null && mp.ToString() != "")
+            {
+                if (int.TryParse(mp.ToString(), out var n) && n > 0)
+                    settings.MaxPlayers = n;
+            }
+            return settings;
         }
 
         public static Character ParseCharacter(Dictionary<string, object> o)

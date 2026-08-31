@@ -32,6 +32,15 @@ namespace FastGame.Models
         public string Kind;
     }
 
+    public sealed class MapRuntimeSettings
+    {
+        public List<string> AbilityAllowlist = new List<string>();
+        public bool ChatEnabled = true;
+        public bool EmojiEnabled = true;
+        /// <summary>null = unlimited (typical for hubs).</summary>
+        public int? MaxPlayers;
+    }
+
     public sealed class GameMap
     {
         public string Id;
@@ -39,6 +48,10 @@ namespace FastGame.Models
         public string Label;
         /// <summary>Unity / UE Build Settings scene NAME for this map.</summary>
         public string EngineScene;
+        /// <summary>level | hub</summary>
+        public string MapKind = "level";
+        public List<string> HubMapIds = new List<string>();
+        public MapRuntimeSettings RuntimeSettings = new MapRuntimeSettings();
         public List<string> SupportedModes = new List<string>();
         public bool Purchasable;
         public int Price;

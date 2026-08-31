@@ -27,6 +27,13 @@ namespace FastGame.Models
         /// <summary>Unity / UE scene NAME from catalog engine_scene.</summary>
         public string EngineScene;
 
+        /// <summary>level | hub</summary>
+        public string MapKind = "level";
+
+        public List<string> HubMapIds = new List<string>();
+
+        public MapRuntimeSettings RuntimeSettings = new MapRuntimeSettings();
+
         public Dictionary<string, object> Meta = new Dictionary<string, object>();
 
         public static FastGameMenuItem FromCollectible(CollectibleDef c, string kind)
@@ -59,6 +66,9 @@ namespace FastGame.Models
                 SkuKind = "map",
                 SkuId = m.MapId,
                 EngineScene = m.EngineScene,
+                MapKind = m.MapKind,
+                HubMapIds = m.HubMapIds != null ? new List<string>(m.HubMapIds) : new List<string>(),
+                RuntimeSettings = m.RuntimeSettings,
             };
         }
 

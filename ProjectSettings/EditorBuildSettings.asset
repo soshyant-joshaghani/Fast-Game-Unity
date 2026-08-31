@@ -21,6 +21,9 @@ EditorBuildSettings:
     path: Assets/Scenes/MAP_4_MENU.unity
     guid: efc9ecd2a5df8f84f83d37a8d5a4dcf4
   - enabled: 1
+    path: Assets/Scenes/Levels/MAP_HUB_SAMPLE.unity
+    guid: 6823f6d83d4d8b043acdf465012736cb
+  - enabled: 1
     path: Assets/Scenes/Levels/MAP_LEVEL_SAMPLE.unity
     guid: 92be020de175db5419c51eaf60ff9696
   m_configObjects: {}

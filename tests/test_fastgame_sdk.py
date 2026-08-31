@@ -272,3 +272,30 @@ def test_unity_realtime_joinmap_seat():
     assert "Realtime.JoinMap" in contract
     assert "/apps/games/realtime/seat" in contract
     assert "designer-chosen" in contract.lower() or "designer-chosen" in contract
+
+
+def test_unity_map_hub_and_engine_scene():
+    models = _read(UNITY / "Models/Models.cs")
+    dto = _read(UNITY / "Models/FastGameDto.cs")
+    item = _read(UNITY / "Models/FastGameMenuItem.cs")
+    menu = _read(UNITY / "Components/FastGameMenuSceneBehaviour.cs")
+    scenes = _read(SAMPLES / "Scenes/SCENE_NAMES.md")
+
+    assert "MapRuntimeSettings" in models
+    assert "EngineScene" in models
+    assert "MapKind" in models
+    assert "HubMapIds" in models
+    assert "AbilityAllowlist" in models
+    assert "ParseMapKind" in dto
+    assert "ParseMapRuntimeSettings" in dto
+    assert "engine_scene" in dto
+    assert "hub_map_ids" in dto
+    assert "runtime_settings" in dto
+    assert "EngineScene" in item
+    assert "MapKind" in item
+    assert "HubMapIds" in item
+    assert "OpenLevel(item.EngineScene)" in menu
+    assert "DefaultLevelScene" not in menu
+    assert "LevelSample" not in _read(UNITY / "Scenes/FastGameSceneNames.cs")
+    assert "engine_scene" in scenes
+    assert "Default Level Scene" not in scenes

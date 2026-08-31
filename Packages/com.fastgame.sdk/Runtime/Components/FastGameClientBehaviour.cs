@@ -1,3 +1,4 @@
+using System.Threading.Tasks;
 using UnityEngine;
 
 namespace FastGame
@@ -16,10 +17,16 @@ namespace FastGame
         public string ApiBaseUrl = "http://api.localhost/api/v1";
 
         [Tooltip("Initialize Game: active catalog game (storage NAME). Auth OTP / recovery use this.")]
-        public string GameCode = "sandbox-capsule";
+        public string GameCode = "game";
 
-        [Tooltip("Initialize Game: this APK store — myket | caffebazar | googleplay | steam | zarinpal.")]
-        public string StorePlatform = "";
+        [Tooltip("Initialize Game: this APK store platform.")]
+        public FastGameStorePlatform StorePlatform = FastGameStorePlatform.Unset;
+
+        [Tooltip("Initialize Client: Dev / Production / EarlyAccess — token must match this stage.")]
+        public FastGameProjectStage ProjectStage = FastGameProjectStage.Dev;
+
+        [Tooltip("Initialize Client: single build access token for the selected project stage.")]
+        public string ClientAccessToken = "fg-dev-game";
 
         [Tooltip("Optional override. Leave empty to fetch Cafe Bazaar / Myket RSA from Editor payment config after login (do not paste JWT / api_secret).")]
         public string StorePublicKey = "";
@@ -59,18 +66,26 @@ namespace FastGame
         }
 
         /// <summary>One-time build config + OS store install check. Does not wipe token or Enter identity.</summary>
-        public bool InitializeGame(string gameCode = null, string storePlatform = null)
+        public bool InitializeGame(string gameCode = null, FastGameStorePlatform? storePlatform = null)
         {
             if (gameCode != null)
                 GameCode = gameCode.Trim();
-            if (storePlatform != null)
-                StorePlatform = FastGameConfig.NormalizeProviderId(storePlatform);
+            if (storePlatform.HasValue)
+                StorePlatform = storePlatform.Value;
 
             ApplyGameConfigToClient();
             return EnsureSetup(out _);
         }
 
-        /// <summary>Network / reconnect only. Does not wipe Enter identity. Does not check store install.</summary>
+        /// <summary>Obsolete string overload — prefer <see cref="InitializeGame(string, FastGameStorePlatform?)"/>.</summary>
+        [System.Obsolete("Use InitializeGame(gameCode, FastGameStorePlatform)")]
+        public bool InitializeGame(string gameCode, string storePlatform)
+        {
+            FastGameStorePlatform parsed = FastGameConfig.StorePlatformFromId(storePlatform);
+            return InitializeGame(gameCode, parsed);
+        }
+
+        /// <summary>Network / reconnect only. Registers project stage + client access token with the server.</summary>
         public bool InitializeClient(string apiBaseUrl)
         {
             ApiBaseUrl = FastGameConfig.NormalizeApiBaseUrl(apiBaseUrl);
@@ -80,18 +95,20 @@ namespace FastGame
                 && string.Equals(Client.Config.ApiBaseUrl, ApiBaseUrl, System.StringComparison.OrdinalIgnoreCase))
             {
                 ApplyGameConfigToClient();
-                return true;
+                return RegisterClientBuildSync();
             }
 
             Client = new FastGameClient(new FastGameConfig
             {
                 ApiBaseUrl = ApiBaseUrl,
                 GameCode = GameCode ?? "",
-                StorePlatform = StorePlatform ?? "",
+                StorePlatform = FastGameConfig.StorePlatformToId(StorePlatform),
                 StorePublicKey = StorePublicKey ?? "",
+                ProjectStage = ProjectStage,
+                ClientAccessToken = ClientAccessToken ?? "",
             });
             ApplyGameConfigToClient();
-            return true;
+            return RegisterClientBuildSync();
         }
 
         /// <summary>Obsolete — call <see cref="InitializeGame"/> (1×) then 1-arg <see cref="InitializeClient(string)"/> (N×).</summary>
@@ -101,6 +118,20 @@ namespace FastGame
             var gameOk = InitializeGame(gameCode, storePlatform);
             var netOk = InitializeClient(apiBaseUrl);
             return gameOk && netOk;
+        }
+
+        bool RegisterClientBuildSync()
+        {
+            ApplyGameConfigToClient();
+            var task = FastGameClientBuild.InitializeAsync(Client.Http, Client.Config);
+            task.Wait();
+            var (ok, message) = task.Result;
+            if (!ok)
+            {
+                LastSetupMessage = message;
+                Debug.LogError("FastGame Initialize Client: " + message);
+            }
+            return ok;
         }
 
         public bool EnsureSetup(out string message)
@@ -115,8 +146,10 @@ namespace FastGame
 
             ApplyGameConfigToClient();
 
-            var provider = FastGameConfig.NormalizeProviderId(
-                Client != null ? Client.Config.StorePlatform : StorePlatform);
+            var provider = FastGameConfig.StorePlatformToId(
+                Client != null
+                    ? FastGameConfig.StorePlatformFromId(Client.Config.StorePlatform)
+                    : StorePlatform);
             if (!IsAndroidStore(provider))
                 return true;
 
@@ -140,9 +173,9 @@ namespace FastGame
             ApplyGameConfigToClient();
         }
 
-        public void SetStorePlatform(string storePlatform)
+        public void SetStorePlatform(FastGameStorePlatform storePlatform)
         {
-            StorePlatform = FastGameConfig.NormalizeProviderId(storePlatform);
+            StorePlatform = storePlatform;
             ApplyGameConfigToClient();
         }
 
@@ -158,7 +191,9 @@ namespace FastGame
             if (Client == null)
                 return;
             Client.Config.GameCode = GameCode ?? "";
-            Client.Config.StorePlatform = StorePlatform ?? "";
+            Client.Config.StorePlatform = FastGameConfig.StorePlatformToId(StorePlatform);
+            Client.Config.ProjectStage = ProjectStage;
+            Client.Config.ClientAccessToken = ClientAccessToken ?? "";
             if (!string.IsNullOrEmpty(StorePublicKey))
                 Client.Config.StorePublicKey = StorePublicKey;
             var rsa = !string.IsNullOrEmpty(StorePublicKey)

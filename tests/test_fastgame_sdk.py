@@ -299,3 +299,63 @@ def test_unity_map_hub_and_engine_scene():
     assert "LevelSample" not in _read(UNITY / "Scenes/FastGameSceneNames.cs")
     assert "engine_scene" in scenes
     assert "Default Level Scene" not in scenes
+
+
+def test_unity_entity_components_and_flow_pins():
+    char = _read(UNITY / "Components/FastGameCharacterComponent.cs")
+    map_c = _read(UNITY / "Components/FastGameMapComponent.cs")
+    avatar = _read(UNITY / "Components/FastGameAvatarComponent.cs")
+    title = _read(UNITY / "Components/FastGameTitleComponent.cs")
+    ach = _read(UNITY / "Components/FastGameAchievementComponent.cs")
+    level = _read(UNITY / "Components/FastGameLevelSceneBehaviour.cs")
+    contract = _read(ROOT / "CONTRACT.md")
+
+    for path in (
+        "Components/FastGameCharacterComponent.cs",
+        "Components/FastGameMapComponent.cs",
+        "Components/FastGameAvatarComponent.cs",
+        "Components/FastGameTitleComponent.cs",
+        "Components/FastGameAchievementComponent.cs",
+    ):
+        assert (UNITY / path).is_file(), path
+
+    assert "FastGameTravelMapPin" in map_c
+    assert "FastGameQuestPin" in map_c
+    assert "Traveled" in map_c
+    assert "Matchmaking" in map_c
+    assert "WaitingHere" in map_c
+    assert "NotStartedYet" in map_c
+    assert "SeatMintResult" in map_c
+
+    assert "CharacterId" in char
+    assert "FetchCharacterAsync" in char
+    assert "OnCharacterFetched" in char
+    assert "GetCharacterAsync" in char
+
+    assert "MapId" in map_c and "ModeId" in map_c
+    assert "GetMapConfigAsync" in map_c
+    assert "TravelMapAsync" in map_c
+    assert "OnTraveled" in map_c
+    assert "OnMatchmaking" in map_c
+    assert "OnWaitingHere" in map_c
+    assert "OnFailed" in map_c
+    assert "OnQuestComplete" in map_c
+    assert "OnQuestFailed" in map_c
+    assert "OnQuestNotStarted" in map_c
+    assert "NotifyQuestComplete" in map_c
+    assert "JoinMapAsync" in map_c
+    assert "LoadScene" in map_c
+
+    assert "AvatarId" in avatar
+    assert "TitleId" in title
+    assert "AchievementId" in ach
+
+    assert "FastGameMapComponent" in level
+    assert "ResolveMap" in level
+    assert "TravelMapAsync" in level
+
+    assert "FastGameCharacterComponent" in contract
+    assert "FastGameMapComponent" in contract
+    assert "Travel Map" in contract
+    assert "sdk-pin-policy.md" in contract
+    assert "Not Started Yet" in contract

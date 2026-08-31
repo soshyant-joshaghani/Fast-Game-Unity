@@ -40,6 +40,15 @@ namespace FastGame
         /// <summary>PlayerPrefs key for ENTER-stored channel (email|phone).</summary>
         public string EnteredChannelPrefsKey = "fast-game-client-entered-channel";
 
+        /// <summary>Dev / Production / EarlyAccess — must match <see cref="ClientAccessToken"/>.</summary>
+        public FastGameProjectStage ProjectStage = FastGameProjectStage.Dev;
+
+        /// <summary>Single build access token (dev shared per game; production issued to company owner).</summary>
+        public string ClientAccessToken = "";
+
+        /// <summary>Assigned by POST /apps/games/client/initialize; used for heartbeat.</summary>
+        public string ClientInstanceId = "";
+
         /// <summary>
         /// Accept host-only values like <c>api.localhost</c> and normalize to
         /// <c>http://api.localhost/api/v1</c>. Matches Unreal <c>NormalizeApiBaseUrl</c>.
@@ -93,6 +102,39 @@ namespace FastGame
             if (id == "app_store" || id == "ios" || id == "apple")
                 return "appstore";
             return id;
+        }
+
+        public static string StorePlatformToId(FastGameStorePlatform platform)
+        {
+            switch (platform)
+            {
+                case FastGameStorePlatform.Myket:
+                    return "myket";
+                case FastGameStorePlatform.CafeBazaar:
+                    return "caffebazar";
+                case FastGameStorePlatform.GooglePlay:
+                    return "googleplay";
+                case FastGameStorePlatform.Steam:
+                    return "steam";
+                case FastGameStorePlatform.ZarinPal:
+                    return "zarinpal";
+                case FastGameStorePlatform.AppStore:
+                    return "appstore";
+                default:
+                    return "";
+            }
+        }
+
+        public static FastGameStorePlatform StorePlatformFromId(string provider)
+        {
+            var id = NormalizeProviderId(provider);
+            if (id == "myket") return FastGameStorePlatform.Myket;
+            if (id == "caffebazar") return FastGameStorePlatform.CafeBazaar;
+            if (id == "googleplay") return FastGameStorePlatform.GooglePlay;
+            if (id == "steam") return FastGameStorePlatform.Steam;
+            if (id == "zarinpal") return FastGameStorePlatform.ZarinPal;
+            if (id == "appstore") return FastGameStorePlatform.AppStore;
+            return FastGameStorePlatform.Unset;
         }
 
         public static string StoreDisplayName(string provider)

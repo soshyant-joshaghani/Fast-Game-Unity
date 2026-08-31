@@ -183,6 +183,72 @@ def test_unity_download_pack_filter_and_platform():
     assert "public List<string> Languages" in models
 
 
+def test_unity_language_scene_scroll():
+    lang = _read(UNITY / "Components/FastGameLanguageSceneBehaviour.cs")
+    scroll = _read(UNITY / "Components/FastGameItemsScrollView.cs")
+
+    assert "FastGameItemsScrollView LanguageScroll" in lang
+    assert "ParseSupportedLanguages" in lang
+    assert '"fa"' in lang
+    assert '"ar"' in lang
+    assert "TryCultureEnglishName" in lang
+    assert "LanguageScroll.SetItems" in lang
+    assert "public IReadOnlyList<FastGameItemsThumbView> Rows" in scroll
+
+
+def test_unity_menu_ui_prefab_components():
+    menu = _read(UNITY / "Components/FastGameMenuSceneBehaviour.cs")
+    thumb = _read(UNITY / "Components/FastGameItemsThumbView.cs")
+    scroll = _read(UNITY / "Components/FastGameItemsScrollView.cs")
+    inspect = _read(UNITY / "Components/FastGameInspectView.cs")
+    item = _read(UNITY / "Models/FastGameMenuItem.cs")
+
+    assert "ShowUser()" in menu
+    assert "ShowSettings()" in menu
+    assert "ShowMenuMaps()" in menu
+    assert "ShowShopCharacters()" in menu
+    assert "FastGameInspectView" in menu
+    assert "CloseInspect" in menu
+    assert "_navStack" in menu
+
+    assert "FastGameItemsThumbView" in thumb
+    assert "THUMB_TXT" in thumb
+    assert "FastGameScrollLayout" in scroll
+    assert "SetItems" in scroll
+    assert "FastGameInspectView" in inspect
+    assert "BACK_BTN" in inspect
+    assert "FastGameMenuItem" in item
+    assert "FromShopLine" in item
+
+
+def test_unity_menu_nav_buttons():
+    menu = _read(UNITY / "Components/FastGameMenuSceneBehaviour.cs")
+    nav_buttons = _read(UNITY / "Scenes/FastGameMenuNavButtons.cs")
+    nav_btn = _read(UNITY / "Components/FastGameMenuNavButton.cs")
+    wiring = _read(UNITY / "Scenes/FastGameMenuNavWiring.cs")
+    action = _read(UNITY / "Scenes/FastGameMenuNavAction.cs")
+    editor = _read(UNITY.parent / "Editor/FastGameMenuSceneBehaviourEditor.cs")
+
+    assert "NavButtons" in menu
+    assert "PopulateMissingNavButtonsOnStart" in menu
+    assert "WireNavigationButtons" in menu
+    assert "DispatchNav" in menu
+    assert "Validate()" in nav_buttons
+    assert "FooterMenu" in nav_buttons
+    assert "Expected name: MENU_BTN" in nav_buttons
+    assert "FastGameMenuNavButton" in nav_btn
+    assert "FastGameMenuNavWiring" in wiring
+    assert "FindByAction" in wiring
+    assert "BindButton" in wiring
+    assert "MENU_BTN" in wiring
+    assert "HOME_BTN" in wiring
+    assert "CHR_BTN" in wiring
+    assert "ACHIEVEMENTS_BTN" in wiring
+    assert "MainShop" in action
+    assert "ShopCollectibles" in action
+    assert "Navigation diagnostics" in editor
+
+
 def test_unity_progress_get_save():
     progress = _read(UNITY / "Progress/FastGameProgress.cs")
     client = _read(UNITY / "FastGameClient.cs")

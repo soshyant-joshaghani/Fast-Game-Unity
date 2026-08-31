@@ -307,6 +307,36 @@ namespace FastGame
             return list;
         }
 
+        /// <summary>GET /content/{game}/friends — accepted/pending friendships.</summary>
+        public async Task<List<FastGameMenuItem>> ListFriendsAsync(string gameId, string lang = null)
+        {
+            var path = FastGameHttp.AppendI18nQuery($"{Base(gameId)}/friends?status=accepted", lang, false);
+            var text = await _http.RequestRawAsync("GET", path);
+            var arr = FastGameJson.ParseArray(text) ?? new List<object>();
+            var list = new List<FastGameMenuItem>();
+            foreach (var item in arr)
+            {
+                if (item is not Dictionary<string, object> o)
+                    continue;
+                var profile = FastGameJson.GetObject(o, "profile");
+                var friendId = FastGameJson.GetString(o, "friend_id");
+                var status = FastGameJson.GetString(o, "status");
+                var label = FastGameJson.GetString(profile, "display_name")
+                    ?? FastGameJson.GetString(profile, "user_id")
+                    ?? friendId;
+                list.Add(new FastGameMenuItem
+                {
+                    Id = FastGameJson.GetString(o, "id"),
+                    Code = friendId,
+                    Label = label,
+                    Description = status,
+                    Kind = "friend",
+                    SkuId = friendId,
+                });
+            }
+            return list;
+        }
+
         static string Escape(string s) => UnityEngine.Networking.UnityWebRequest.EscapeURL(s ?? "");
     }
 }

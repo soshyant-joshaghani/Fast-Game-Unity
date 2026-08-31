@@ -1,6 +1,6 @@
 # Scene shells — frozen NAMEs (UE + Unity)
 
-Linear boot: **0 → 1 → 2 → 3 → 4 → LEVEL**
+Linear boot: **0 → 1 → 2 → 3 → 4** — then per-map level scenes from catalog **`engine_scene`**.
 
 | # | Scene NAME | Main component |
 |---|------------|----------------|
@@ -9,7 +9,7 @@ Linear boot: **0 → 1 → 2 → 3 → 4 → LEVEL**
 | 2 | `MAP_2_AUTH` | `FastGameAuthBehaviour` / `BP_2_AUTH` |
 | 3 | `MAP_3_DOWNLOAD` | `FastGameDownloadSceneBehaviour` / `BP_3_DOWNLOAD` |
 | 4 | `MAP_4_MENU` | `FastGameMenuSceneBehaviour` / `BP_4_MENU` + `UFastGameMenuSceneComponent` |
-| — | `MAP_LEVEL_SAMPLE` | `FastGameLevelSceneBehaviour` / `BP_5_LEVEL` |
+| level | per map | `FastGameLevelSceneBehaviour` / `BP_5_LEVEL` — scene NAME from dashboard **`engine_scene`** |
 
 ## SPLASH (0)
 
@@ -150,7 +150,7 @@ Assign shared scroll views on the menu behaviour (e.g. one `ShopScroll` for CHR/
 |---------|---------|
 | **`Logout Scene`** | `MAP_1_LANGUAGE` |
 | **`Logout()`** | wire User Info logout button |
-| **`Default Level Scene`** | `MAP_LEVEL_SAMPLE` for map solo play |
+| **Map play** | Inspect → **Play solo** loads the map's catalog **`engine_scene`** (must be in Build Settings) |
 
 User Info: assign `UserPhoneLabel`, `UserEmailLabel`, `UserFullNameField`; wire **Save** → `SaveUserFullName()`.
 

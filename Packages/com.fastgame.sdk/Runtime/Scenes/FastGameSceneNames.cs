@@ -10,7 +10,6 @@ namespace FastGame
         public const string Auth = "MAP_2_AUTH";
         public const string Download = "MAP_3_DOWNLOAD";
         public const string Menu = "MAP_4_MENU";
-        public const string LevelSample = "MAP_LEVEL_SAMPLE";
 
         /// <summary>Default linear boot order (0 → 4).</summary>
         public static readonly string[] BootOrder =

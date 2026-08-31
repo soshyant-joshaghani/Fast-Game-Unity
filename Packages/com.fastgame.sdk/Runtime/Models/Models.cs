@@ -37,6 +37,8 @@ namespace FastGame.Models
         public string Id;
         public string MapId;
         public string Label;
+        /// <summary>Unity / UE Build Settings scene NAME for this map.</summary>
+        public string EngineScene;
         public List<string> SupportedModes = new List<string>();
         public bool Purchasable;
         public int Price;

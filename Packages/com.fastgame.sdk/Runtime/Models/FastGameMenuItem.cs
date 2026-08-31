@@ -24,6 +24,9 @@ namespace FastGame.Models
         public string SkuKind;
         public string SkuId;
 
+        /// <summary>Unity / UE scene NAME from catalog engine_scene.</summary>
+        public string EngineScene;
+
         public Dictionary<string, object> Meta = new Dictionary<string, object>();
 
         public static FastGameMenuItem FromCollectible(CollectibleDef c, string kind)
@@ -55,6 +58,7 @@ namespace FastGame.Models
                 Kind = "map",
                 SkuKind = "map",
                 SkuId = m.MapId,
+                EngineScene = m.EngineScene,
             };
         }
 

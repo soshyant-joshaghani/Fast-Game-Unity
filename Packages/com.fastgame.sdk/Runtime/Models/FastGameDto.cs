@@ -63,6 +63,7 @@ namespace FastGame
                     Id = FastGameJson.GetString(m, "id"),
                     MapId = FastGameJson.GetString(m, "map_id"),
                     Label = FastGameJson.GetString(m, "label"),
+                    EngineScene = FastGameJson.GetString(m, "engine_scene"),
                     Purchasable = FastGameJson.GetBool(m, "purchasable"),
                     Price = FastGameJson.GetInt(m, "price"),
                     Translations = ParseTranslations(FastGameJson.GetObject(m, "translations")),

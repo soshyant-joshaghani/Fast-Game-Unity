@@ -3604,7 +3604,6 @@ MonoBehaviour:
   AboutPageCanvas: {fileID: 1990034935}
   InspectView: {fileID: 2123667152}
   Shop: {fileID: 809440980}
-  DefaultLevelScene: MAP_LEVEL_SAMPLE
   LogoutScene: MAP_1_LANGUAGE
   NavButtons:
     FooterMenu: {fileID: 987895096}

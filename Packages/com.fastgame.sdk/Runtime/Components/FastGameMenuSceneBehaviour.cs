@@ -51,7 +51,6 @@ namespace FastGame
 
         [Header("Shop / level")]
         public FastGameShopBehaviour Shop;
-        public string DefaultLevelScene = FastGameSceneNames.LevelSample;
 
         [Header("Logout")]
         public string LogoutScene = FastGameSceneNames.Language;
@@ -341,9 +340,17 @@ namespace FastGame
             LoadScene(LogoutScene);
         }
 
-        public void OpenLevel(string levelScene = null)
+        public void OpenLevel(string levelScene)
         {
-            LoadScene(string.IsNullOrWhiteSpace(levelScene) ? DefaultLevelScene : levelScene);
+            if (string.IsNullOrWhiteSpace(levelScene))
+            {
+                Debug.LogWarning(
+                    "[FastGame Menu] Cannot open level: engine_scene is not configured for this map.",
+                    this);
+                return;
+            }
+
+            LoadScene(levelScene);
         }
 
         // --- Inspect ---
@@ -387,7 +394,7 @@ namespace FastGame
             {
                 case "map":
                     if (actionIndex == 0)
-                        OpenLevel(DefaultLevelScene);
+                        OpenLevel(item.EngineScene);
                     break;
                 case "shop":
                     if (actionIndex == 0 && Shop != null && !item.Owned)
@@ -413,7 +420,8 @@ namespace FastGame
             switch (item.Kind)
             {
                 case "map":
-                    a0 = Visible("Play solo");
+                    if (!string.IsNullOrWhiteSpace(item.EngineScene))
+                        a0 = Visible("Play solo");
                     a1 = Visible("Matchmake");
                     break;
                 case "mode":

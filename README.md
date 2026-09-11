@@ -1,6 +1,8 @@
 # Fast Game Unity
 
-Standalone **Unity 6.3 LTS** project for the official Fast Game client SDK.
+Standalone **Unity 6.3 LTS** project — Fast Game client kit (**parity with UE**).
+
+**Role:** art + thin runtime interpreter. Prefabs hold meshes/animators + FastGame components; tip from [`fast-game`](../fast-game/README.md) drives camera, character/vehicle controllers, abilities, zones, input, and variable bindings. Keep binding **names** in sync. Do not invent Unity-only gameplay rules — match [`fast-game-ue`](../fast-game-ue/README.md) policy.
 
 | Item | Path |
 |------|------|
@@ -10,7 +12,8 @@ Standalone **Unity 6.3 LTS** project for the official Fast Game client SDK.
 | SDK docs | [Packages/com.fastgame.sdk/README.md](Packages/com.fastgame.sdk/README.md) |
 | Project guide | [docs/PROJECT.md](docs/PROJECT.md) |
 | Contract | [CONTRACT.md](CONTRACT.md) |
-| Backend kit | [`../fast-game/`](../fast-game/Readme.md) |
+| Backend kit | [`../fast-game/`](../fast-game/README.md) |
+| Plans | [`../fast-game/__plans__/`](../fast-game/__plans__/) |
 
 ## Open
 

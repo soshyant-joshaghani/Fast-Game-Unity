@@ -29,7 +29,7 @@ namespace FastGame
         public string GetCharacterId() => CharacterId ?? "";
 
         /// <summary>Empty GameCode → Initialize Game GameCode.</summary>
-        public void FetchCharacter() => _ = Run(FetchCharacterAsync);
+        public void FetchCharacter() => _ = Run(() => FetchCharacterAsync());
 
         public async Task FetchCharacterAsync(string gameCode = null)
         {

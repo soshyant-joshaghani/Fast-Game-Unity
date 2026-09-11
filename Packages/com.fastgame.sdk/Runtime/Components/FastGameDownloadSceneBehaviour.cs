@@ -171,7 +171,8 @@ namespace FastGame
         static FastGameDownloadContext BuildDownloadContext(FastGameClientBehaviour host)
         {
             var os = FastGameRuntimePlatform.GetRuntimeOs();
-            var storeOs = FastGameRuntimePlatform.StorePlatformToOs(host?.StorePlatform);
+            var storeOs = FastGameRuntimePlatform.StorePlatformToOs(
+                host == null ? "" : FastGameConfig.StorePlatformToId(host.StorePlatform));
             if (!string.IsNullOrWhiteSpace(storeOs)
                 && !string.Equals(os, storeOs, StringComparison.OrdinalIgnoreCase)
                 && Application.isEditor)

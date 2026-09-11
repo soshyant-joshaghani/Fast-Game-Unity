@@ -69,7 +69,7 @@ namespace FastGame
         public string GetModeId() => ModeId ?? "";
 
         /// <summary>Empty GameCode → Initialize Game GameCode. Uses component MapId.</summary>
-        public void GetMapConfig() => _ = Run(GetMapConfigAsync);
+        public void GetMapConfig() => _ = Run(() => GetMapConfigAsync());
 
         public async Task GetMapConfigAsync(string gameCode = null)
         {

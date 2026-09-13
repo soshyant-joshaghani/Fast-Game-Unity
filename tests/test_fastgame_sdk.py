@@ -136,6 +136,13 @@ def test_unity_tip_facade_content_methods():
     assert "GetGameConfigAsync" in content
     assert "GetMapConfigAsync" in content
     assert "GetCharacterAsync" in content
+    assert "GetEntityAsync" in content
+    assert "GetLootTableAsync" in content
+    assert "OpenLootAsync" in content
+    assert "ClaimPickupAsync" in content
+    assert "/loot/" in content
+    assert "/entities/" in content
+    assert "loot-open" in content
     assert "GetDialogueAsync" in content
     assert "GetQuizAsync" in content
     assert "GetStringsAsync" in content
@@ -146,6 +153,8 @@ def test_unity_tip_facade_content_methods():
     assert "GetBootstrap" in contract
     assert "GetGameConfig" in contract
     assert "GetMapConfig" in contract
+    assert "GetLootTable" in contract
+    assert "Loot open" in contract
     assert "GetPackTipAsync" in content
     assert "/apps/games/asset-packs/" in content
     assert "payload" in _read(UNITY / "Assets/FastGameAssets.cs")
@@ -359,3 +368,11 @@ def test_unity_entity_components_and_flow_pins():
     assert "Travel Map" in contract
     assert "sdk-pin-policy.md" in contract
     assert "Not Started Yet" in contract
+    assert (UNITY / "Gameplay/FastGameLootRuntime.cs").is_file()
+    assert (UNITY / "Gameplay/FastGameGameplayDirector.cs").is_file()
+    loot = _read(UNITY / "Gameplay/FastGameLootRuntime.cs")
+    director = _read(UNITY / "Gameplay/FastGameGameplayDirector.cs")
+    assert "OpenLootAsync" in loot
+    assert "FetchLootTableAsync" in loot
+    assert "LootRuntime" in director
+    assert "OpenLoot" in director

@@ -58,6 +58,22 @@ namespace FastGame
             return FastGameJson.ParseObject(text) ?? new Dictionary<string, object>();
         }
 
+        /// <summary>Progressive GetEntity — character or pickup/chest tip (G2).</summary>
+        public async Task<Dictionary<string, object>> GetEntityAsync(string gameCode, string entityId)
+        {
+            var text = await _http.RequestRawAsync(
+                "GET", $"{TipBase(gameCode)}/entities/{Escape(entityId)}");
+            return FastGameJson.ParseObject(text) ?? new Dictionary<string, object>();
+        }
+
+        /// <summary>Progressive GetLootTable (G2).</summary>
+        public async Task<Dictionary<string, object>> GetLootTableAsync(string gameCode, string lootTableId)
+        {
+            var text = await _http.RequestRawAsync(
+                "GET", $"{TipBase(gameCode)}/loot/{Escape(lootTableId)}");
+            return FastGameJson.ParseObject(text) ?? new Dictionary<string, object>();
+        }
+
         /// <summary>Progressive GetDialogue — 404 until panel craft (A8).</summary>
         public async Task<Dictionary<string, object>> GetDialogueAsync(string gameCode, string dialogueId)
         {
@@ -245,6 +261,28 @@ namespace FastGame
             var text = await _http.RequestRawAsync(
                 "POST",
                 $"{Base(gameId)}/players/me/pickup-claim",
+                FastGameJson.Stringify(body));
+            return FastGameJson.ParseObject(text) ?? new Dictionary<string, object>();
+        }
+
+        /// <summary>Validated chest/loot open — server rolls; forged grants rejected (G2).</summary>
+        public async Task<Dictionary<string, object>> OpenLootAsync(
+            string gameId,
+            string mapId = null,
+            string modeId = null,
+            string pickupId = null,
+            string placementId = null,
+            string lootTableId = null)
+        {
+            var body = new Dictionary<string, object>();
+            if (!string.IsNullOrEmpty(mapId)) body["map_id"] = mapId;
+            if (!string.IsNullOrEmpty(modeId)) body["mode_id"] = modeId;
+            if (!string.IsNullOrEmpty(pickupId)) body["pickup_id"] = pickupId;
+            if (!string.IsNullOrEmpty(placementId)) body["placement_id"] = placementId;
+            if (!string.IsNullOrEmpty(lootTableId)) body["loot_table_id"] = lootTableId;
+            var text = await _http.RequestRawAsync(
+                "POST",
+                $"{Base(gameId)}/players/me/loot-open",
                 FastGameJson.Stringify(body));
             return FastGameJson.ParseObject(text) ?? new Dictionary<string, object>();
         }

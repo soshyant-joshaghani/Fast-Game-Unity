@@ -5,7 +5,7 @@ namespace FastGame
 {
     /// <summary>
     /// LEVEL — sync with fast-game map NAME. Delegates GetMapConfig / Travel Map to
-    /// <see cref="FastGameMapComponent"/>; wire scenario triggers and Flow driver here.
+    /// <see cref="FastGameMapComponent"/>; optional <see cref="FastGameGameplayDirector"/> boots tip profiles (G1).
     /// </summary>
     [AddComponentMenu("Fast Game/Scenes/Level")]
     public sealed class FastGameLevelSceneBehaviour : FastGameSceneFlowBehaviour
@@ -20,6 +20,10 @@ namespace FastGame
         [Tooltip("Active mode NAME (solo, pvp, …) — forwarded to Map component.")]
         public string ModeId;
 
+        [Header("Gameplay (G1)")]
+        [Tooltip("Optional — boots camera/movement from map tip via GameplayDirector.")]
+        public FastGameGameplayDirector Director;
+
         [Header("Navigation")]
         [Tooltip("Return to menu when level ends.")]
         public string MenuScene = FastGameSceneNames.Menu;
@@ -28,6 +32,9 @@ namespace FastGame
         {
             AutoLoadNextOnComplete = false;
             ApplyToMapComponent();
+            if (Director == null)
+                Director = GetComponent<FastGameGameplayDirector>()
+                    ?? GetComponentInChildren<FastGameGameplayDirector>(true);
         }
 
         void OnValidate()
@@ -54,6 +61,17 @@ namespace FastGame
                 ?? GetComponentInChildren<FastGameMapComponent>(true);
             return Map;
         }
+
+        public FastGameGameplayDirector ResolveDirector()
+        {
+            if (Director != null)
+                return Director;
+            Director = GetComponent<FastGameGameplayDirector>()
+                ?? GetComponentInChildren<FastGameGameplayDirector>(true);
+            return Director;
+        }
+
+        public void BootGameplay() => ResolveDirector()?.Boot();
 
         public void ReturnToMenu()
         {

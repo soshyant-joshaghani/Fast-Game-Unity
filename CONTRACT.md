@@ -76,6 +76,9 @@ Base: `{ApiBaseUrl}` default `http://api.localhost/api/v1`
 | Activate avatar | POST | `/apps/games/content/{game}/players/me/avatars/{avatar_id}/activate` |
 | Activate title | POST | `/apps/games/content/{game}/players/me/titles/{title_id}/activate` |
 | Pickup claim | POST | `/apps/games/content/{game}/players/me/pickup-claim` |
+| Loot open | POST | `/apps/games/content/{game}/players/me/loot-open` — server roll; forged `granted`/`entries` rejected |
+| GetLootTable | GET | `/apps/games/tip/{game}/loot/{loot_table_id}` |
+| GetEntity | GET | `/apps/games/tip/{game}/entities/{entity_id}` — character alias or pickup/chest |
 | Shop catalog | GET | `/apps/games/shop/catalog` |
 | Claim free | POST | `/apps/games/shop/claim-free` |
 | Unlock begin | POST | `/apps/games/shop/unlock/begin` — `{ game_code, sku_kind, sku_id, provider, callback_url?, discount_code? }` → already `owned` or `pending` + `mode` (`zarinpal`\|`store`\|`steam`) + `authority` / `payment_token` / `payment_url?` / `store_product_id?` / `order_id?` |
@@ -115,13 +118,26 @@ Slim **MonoBehaviour** components bind locale-free catalog **NAME**s on prefabs.
 
 | Component | NAME property | Fetches / actions |
 |-----------|---------------|-------------------|
-| **FastGameCharacterComponent** | `CharacterId` | `FetchCharacter` → tip GetCharacter; `OnCharacterFetched` |
+| **FastGameCharacterComponent** | `CharacterId` (+ `EntityKind`) | `FetchCharacter` → tip GetCharacter; applies movement/camera profile via Director when present |
 | **FastGameMapComponent** | `MapId`, `ModeId` | `GetMapConfig` → tip GetMapConfig; **TravelMap** (events below); ON_QUEST listener events |
 | **FastGameAvatarComponent** | `AvatarId` | bind only (ownership via Shop/Progress) |
 | **FastGameTitleComponent** | `TitleId` | bind only |
 | **FastGameAchievementComponent** | `AchievementId` | bind only |
 
-**FastGameLevelSceneBehaviour** forwards `MapId` / `ModeId` to an attached **FastGameMapComponent** and exposes `GetMapConfig` / `TravelMap` delegates.
+### GameplayDirector (G1) + LootRuntime (G2)
+
+Single LEVEL façade — add **FastGameGameplayDirector** on the level (or player root). Modules (also individually placeable):
+
+| Module | Role |
+|--------|------|
+| **FastGameGameplayDirector** | `Boot` → GetMapConfig; apply `camera_profile` / `input_profile_id`; façade for ability / SetAnimator / SetMaterial / OpenLoot |
+| **FastGameParamRuntime** | SetAnimator / SetMaterial (declared param NAMEs) |
+| **FastGameAbilityRuntime** | ActivateAbility → param writes (toggle optional) |
+| **FastGameMovementRuntime** | `movement_profile` humanoid/fly; CharacterController + optional Speed animator |
+| **FastGameCameraRuntime** | `camera_profile` tps_follow / top_down / fps / orbit / fixed |
+| **FastGameLootRuntime** | GetLootTable + OpenLoot / ClaimPickup (server-authoritative rolls; world_spawns event) |
+
+**FastGameLevelSceneBehaviour** forwards `MapId` / `ModeId` to Map; optional `BootGameplay()` → Director.
 
 **Exec pin policy:** Auth-style named exec pins — no redundant `bSuccess` on scenario nodes. Canonical pin **DisplayNames** and Flow/LEVEL rules: [fast-game/docs/sdk-pin-policy.md](../fast-game/docs/sdk-pin-policy.md).
 

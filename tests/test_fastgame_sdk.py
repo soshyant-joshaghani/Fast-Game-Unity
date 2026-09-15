@@ -370,9 +370,33 @@ def test_unity_entity_components_and_flow_pins():
     assert "Not Started Yet" in contract
     assert (UNITY / "Gameplay/FastGameLootRuntime.cs").is_file()
     assert (UNITY / "Gameplay/FastGameGameplayDirector.cs").is_file()
+    assert (UNITY / "Gameplay/FastGameCharacterController.cs").is_file()
+    assert (UNITY / "Gameplay/FastGameCameraController.cs").is_file()
     loot = _read(UNITY / "Gameplay/FastGameLootRuntime.cs")
     director = _read(UNITY / "Gameplay/FastGameGameplayDirector.cs")
+    character = _read(UNITY / "Gameplay/FastGameCharacterController.cs")
+    camera = _read(UNITY / "Gameplay/FastGameCameraController.cs")
+    ability = _read(UNITY / "Gameplay/FastGameAbilityRuntime.cs")
     assert "OpenLootAsync" in loot
     assert "FetchLootTableAsync" in loot
     assert "LootRuntime" in director
     assert "OpenLoot" in director
+    assert "CharacterController" in director
+    assert "CameraController" in director
+    assert "RequestJump" in character
+    assert "SetCrouch" in character
+    assert "ApplyLocomotionFromTip" in character
+    assert "NormalizeProfile" in camera
+    assert "LoadFromTipAbilities" in ability
+    assert "on_activate" in ability
+    assert (UNITY / "Gameplay/FastGameFlowRuntime.cs").is_file()
+    flow = _read(UNITY / "Gameplay/FastGameFlowRuntime.cs")
+    dialogue = _read(UNITY / "Components/FastGameDialoguePlayerComponent.cs")
+    assert "NotifyTriggerEnter" in flow
+    assert "play_dialogue" in flow
+    assert "ACH_FASTGAME_FELLOW" in flow
+    assert "LoadFromMapTip" in flow
+    assert "FlowRuntime" in director
+    assert "SelectChoice" in dialogue
+    assert "GetDialogueAsync" in dialogue
+    assert "Flow Runtime" in contract or "FlowRuntime" in contract

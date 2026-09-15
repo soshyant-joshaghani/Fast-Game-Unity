@@ -2,76 +2,56 @@ using UnityEngine;
 
 namespace FastGame
 {
-    /// <summary>
-    /// Tip camera_profile → follow / top-down / fps (G1 fill).
-    /// Profiles: tps_follow (default), top_down, fps, orbit, fixed.
-    /// </summary>
-    [AddComponentMenu("Fast Game/Gameplay/Camera Runtime")]
+    /// <summary>Legacy G1 name — prefer <see cref="FastGameCameraController"/> (V2).</summary>
+    [AddComponentMenu("Fast Game/Gameplay/Camera Runtime (legacy)")]
     public sealed class FastGameCameraRuntime : MonoBehaviour
     {
-        public Camera RigCamera;
-        public Transform FollowTarget;
-        public string CameraProfile = "tps_follow";
-
-        public Vector3 TpsOffset = new Vector3(0f, 2.2f, -4.5f);
-        public Vector3 TopDownOffset = new Vector3(0f, 18f, -0.1f);
-        public float FollowLerp = 12f;
-        public float LookLerp = 10f;
+        public FastGameCameraController Controller;
 
         void Awake()
         {
-            if (RigCamera == null)
-                RigCamera = Camera.main;
+            if (Controller == null)
+                Controller = GetComponent<FastGameCameraController>()
+                    ?? gameObject.AddComponent<FastGameCameraController>();
         }
 
-        public void ApplyCameraProfile(string profile)
+        public Camera RigCamera
         {
-            CameraProfile = string.IsNullOrWhiteSpace(profile) ? "tps_follow" : profile.Trim();
+            get => Controller != null ? Controller.RigCamera : null;
+            set { if (Controller != null) Controller.RigCamera = value; }
         }
-
-        public void SetFollowTarget(Transform target) => FollowTarget = target;
-
-        void LateUpdate()
+        public Transform FollowTarget
         {
-            if (RigCamera == null || FollowTarget == null)
-                return;
-
-            var profile = (CameraProfile ?? "tps_follow").Trim().ToLowerInvariant();
-            if (profile == "fixed")
-                return;
-
-            Vector3 desired;
-            switch (profile)
-            {
-                case "fps":
-                    desired = FollowTarget.position + FollowTarget.TransformVector(new Vector3(0f, 1.6f, 0.1f));
-                    RigCamera.transform.position = desired;
-                    RigCamera.transform.rotation = Quaternion.Slerp(
-                        RigCamera.transform.rotation,
-                        FollowTarget.rotation,
-                        1f - Mathf.Exp(-LookLerp * Time.deltaTime));
-                    return;
-                case "top_down":
-                    desired = FollowTarget.position + TopDownOffset;
-                    break;
-                case "orbit":
-                case "tps_follow":
-                default:
-                    desired = FollowTarget.position + FollowTarget.TransformDirection(TpsOffset);
-                    break;
-            }
-
-            RigCamera.transform.position = Vector3.Lerp(
-                RigCamera.transform.position,
-                desired,
-                1f - Mathf.Exp(-FollowLerp * Time.deltaTime));
-
-            var look = FollowTarget.position + Vector3.up * 1.4f;
-            var rot = Quaternion.LookRotation(look - RigCamera.transform.position, Vector3.up);
-            RigCamera.transform.rotation = Quaternion.Slerp(
-                RigCamera.transform.rotation,
-                rot,
-                1f - Mathf.Exp(-LookLerp * Time.deltaTime));
+            get => Controller != null ? Controller.FollowTarget : null;
+            set { if (Controller != null) Controller.FollowTarget = value; }
         }
+        public string CameraProfile
+        {
+            get => Controller != null ? Controller.CameraProfile : "tps";
+            set { if (Controller != null) Controller.CameraProfile = value; }
+        }
+        public Vector3 TpsOffset
+        {
+            get => Controller != null ? Controller.TpsOffset : default;
+            set { if (Controller != null) Controller.TpsOffset = value; }
+        }
+        public Vector3 TopDownOffset
+        {
+            get => Controller != null ? Controller.TopDownOffset : default;
+            set { if (Controller != null) Controller.TopDownOffset = value; }
+        }
+        public float FollowLerp
+        {
+            get => Controller != null ? Controller.FollowLerp : 12f;
+            set { if (Controller != null) Controller.FollowLerp = value; }
+        }
+        public float LookLerp
+        {
+            get => Controller != null ? Controller.LookLerp : 10f;
+            set { if (Controller != null) Controller.LookLerp = value; }
+        }
+
+        public void ApplyCameraProfile(string profile) => Controller?.ApplyCameraProfile(profile);
+        public void SetFollowTarget(Transform target) => Controller?.SetFollowTarget(target);
     }
 }

@@ -6,8 +6,7 @@ using UnityEngine.Events;
 namespace FastGame
 {
     /// <summary>
-    /// Single LEVEL façade (G1). Boots tip map profiles, owns runtime modules.
-    /// Designers call Director methods / wire Flow — not ten competing Hosts.
+    /// Single LEVEL façade. Boots tip map profiles; owns V2 Character/Camera controllers.
     /// </summary>
     [AddComponentMenu("Fast Game/Gameplay/Gameplay Director")]
     public sealed class FastGameGameplayDirector : MonoBehaviour
@@ -17,13 +16,18 @@ namespace FastGame
         public FastGameMapComponent Map;
         public FastGameLevelSceneBehaviour Level;
 
-        [Header("Modules")]
-        public FastGameCameraRuntime CameraRuntime;
-        public FastGameMovementRuntime MovementRuntime;
+        [Header("Modules (V2)")]
+        public FastGameCameraController CameraController;
+        public FastGameCharacterController CharacterController;
         public FastGameAbilityRuntime AbilityRuntime;
         public FastGameParamRuntime ParamRuntime;
         public FastGameLootRuntime LootRuntime;
+        public FastGameFlowRuntime FlowRuntime;
         public FastGameCharacterComponent PlayerEntity;
+
+        [Header("Legacy aliases (G1)")]
+        public FastGameCameraRuntime CameraRuntime;
+        public FastGameMovementRuntime MovementRuntime;
 
         [Header("Boot")]
         [Tooltip("Fetch GetMapConfig on Start and apply camera/input profile fields when present.")]
@@ -61,22 +65,40 @@ namespace FastGame
                     : GetComponent<FastGameMapComponent>()
                         ?? GetComponentInChildren<FastGameMapComponent>(true);
 
-            if (CameraRuntime == null)
+            if (CameraController == null)
+                CameraController = GetComponent<FastGameCameraController>()
+                    ?? GetComponentInChildren<FastGameCameraController>(true);
+            if (CameraController == null && CameraRuntime == null)
                 CameraRuntime = GetComponent<FastGameCameraRuntime>()
                     ?? GetComponentInChildren<FastGameCameraRuntime>(true);
-            if (MovementRuntime == null)
+            if (CameraController == null && CameraRuntime != null)
+                CameraController = CameraRuntime.Controller;
+
+            if (CharacterController == null)
+                CharacterController = GetComponentInChildren<FastGameCharacterController>(true);
+            if (CharacterController == null && MovementRuntime == null)
                 MovementRuntime = GetComponentInChildren<FastGameMovementRuntime>(true);
+            if (CharacterController == null && MovementRuntime != null)
+                CharacterController = MovementRuntime.Controller;
+
             if (AbilityRuntime == null)
                 AbilityRuntime = GetComponentInChildren<FastGameAbilityRuntime>(true);
             if (ParamRuntime == null)
                 ParamRuntime = GetComponentInChildren<FastGameParamRuntime>(true);
             if (LootRuntime == null)
                 LootRuntime = GetComponentInChildren<FastGameLootRuntime>(true);
+            if (FlowRuntime == null)
+                FlowRuntime = GetComponentInChildren<FastGameFlowRuntime>(true);
             if (PlayerEntity == null)
                 PlayerEntity = GetComponentInChildren<FastGameCharacterComponent>(true);
 
-            if (CameraRuntime != null && CameraRuntime.FollowTarget == null && PlayerEntity != null)
-                CameraRuntime.SetFollowTarget(PlayerEntity.transform);
+            if (CameraController != null && CameraController.FollowTarget == null && PlayerEntity != null)
+                CameraController.SetFollowTarget(PlayerEntity.transform);
+            if (FlowRuntime != null)
+            {
+                FlowRuntime.Director = this;
+                FlowRuntime.Map = Map;
+            }
         }
 
         /// <summary>Fetch map tip and apply camera_profile / input_profile_id / movement defaults.</summary>
@@ -102,6 +124,11 @@ namespace FastGame
 
                 var body = await client.Content.GetMapConfigAsync(code, Map.MapId.Trim());
                 ApplyMapConfig(body);
+                if (FlowRuntime != null)
+                {
+                    FlowRuntime.LoadFromMapTip(body);
+                    FlowRuntime.BootFromLoadedTip();
+                }
                 OnMapConfigApplied?.Invoke(true, FastGameJson.Stringify(body), "");
                 OnBootComplete?.Invoke();
             }
@@ -126,23 +153,46 @@ namespace FastGame
             ActiveCameraProfile = FastGameJson.GetString(payload, "camera_profile") ?? ActiveCameraProfile;
             ActiveInputProfileId = FastGameJson.GetString(payload, "input_profile_id") ?? ActiveInputProfileId;
 
-            if (!string.IsNullOrWhiteSpace(ActiveCameraProfile) && CameraRuntime != null)
-                CameraRuntime.ApplyCameraProfile(ActiveCameraProfile);
+            // Prefer mode runtime_settings.camera_profile when present
+            var modes = FastGameJson.GetArray(payload, "map_modes");
+            if (modes != null && !string.IsNullOrWhiteSpace(Map?.ModeId))
+            {
+                for (var i = 0; i < modes.Count; i++)
+                {
+                    var mm = modes[i] as System.Collections.Generic.Dictionary<string, object>;
+                    if (mm == null)
+                        continue;
+                    if (!string.Equals(
+                            FastGameJson.GetString(mm, "mode_id"),
+                            Map.ModeId,
+                            StringComparison.OrdinalIgnoreCase))
+                        continue;
+                    var rs = FastGameJson.GetObject(mm, "runtime_settings");
+                    var cam = FastGameJson.GetString(rs, "camera_profile");
+                    if (!string.IsNullOrWhiteSpace(cam))
+                        ActiveCameraProfile = cam;
+                    break;
+                }
+            }
 
-            // movement_profile often lives on the player entity tip — keep map override optional later
-            if (MovementRuntime != null && !string.IsNullOrWhiteSpace(ActiveMovementProfile))
-                MovementRuntime.ApplyMovementProfile(ActiveMovementProfile);
+            if (!string.IsNullOrWhiteSpace(ActiveCameraProfile))
+                ApplyCameraProfile(ActiveCameraProfile);
+
+            if (CharacterController != null && !string.IsNullOrWhiteSpace(ActiveMovementProfile))
+                CharacterController.ApplyMovementProfile(ActiveMovementProfile);
         }
 
         public void ApplyMovementProfile(string profile)
         {
             ActiveMovementProfile = profile ?? "";
+            CharacterController?.ApplyMovementProfile(ActiveMovementProfile);
             MovementRuntime?.ApplyMovementProfile(ActiveMovementProfile);
         }
 
         public void ApplyCameraProfile(string profile)
         {
             ActiveCameraProfile = profile ?? "";
+            CameraController?.ApplyCameraProfile(ActiveCameraProfile);
             CameraRuntime?.ApplyCameraProfile(ActiveCameraProfile);
         }
 
@@ -155,6 +205,8 @@ namespace FastGame
         public void SetAnimator(string paramName, bool value) => ParamRuntime?.SetAnimator(paramName, value);
 
         public void SetMaterial(string paramName, float value) => ParamRuntime?.SetMaterial(paramName, value);
+
+        public void NotifyTriggerEnter(string triggerId) => FlowRuntime?.NotifyTriggerEnter(triggerId);
 
         public void OpenLoot(string pickupId, string placementId = null, string lootTableId = null) =>
             LootRuntime?.OpenLoot(pickupId, placementId, lootTableId);

@@ -66,7 +66,7 @@ namespace FastGame
             }
         }
 
-        /// <summary>Apply movement/camera profile strings and prefab from tip payload when present.</summary>
+        /// <summary>Apply locomotion / camera / abilities / declared params from tip.</summary>
         public void ApplyEntityTip(System.Collections.Generic.Dictionary<string, object> root)
         {
             if (root == null)
@@ -84,6 +84,20 @@ namespace FastGame
             var move = FastGameJson.GetString(payload, "movement_profile");
             var cam = FastGameJson.GetString(payload, "camera_profile");
             var director = GetComponentInParent<FastGameGameplayDirector>();
+            var character = GetComponent<FastGameCharacterController>()
+                ?? GetComponentInChildren<FastGameCharacterController>(true);
+            var camera = director != null
+                ? director.CameraController
+                : UnityEngine.Object.FindObjectOfType<FastGameCameraController>();
+            var abilities = GetComponent<FastGameAbilityRuntime>()
+                ?? GetComponentInChildren<FastGameAbilityRuntime>(true);
+
+            character?.ApplyLocomotionFromTip(payload);
+            camera?.ApplyAllowedCamerasFromTip(payload);
+
+            var abList = FastGameJson.GetArray(payload, "abilities");
+            abilities?.LoadFromTipAbilities(abList);
+
             if (director != null)
             {
                 if (!string.IsNullOrWhiteSpace(move))
@@ -93,10 +107,8 @@ namespace FastGame
             }
             else
             {
-                var movement = GetComponent<FastGameMovementRuntime>();
-                if (movement != null && !string.IsNullOrWhiteSpace(move))
-                    movement.ApplyMovementProfile(move);
-                var camera = UnityEngine.Object.FindObjectOfType<FastGameCameraRuntime>();
+                if (character != null && !string.IsNullOrWhiteSpace(move))
+                    character.ApplyMovementProfile(move);
                 if (camera != null && !string.IsNullOrWhiteSpace(cam))
                     camera.ApplyCameraProfile(cam);
             }

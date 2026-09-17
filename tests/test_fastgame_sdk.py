@@ -110,6 +110,29 @@ def test_unity_enter_not_wiped_on_reinit():
     assert "/base/login/enter" in auth or "EnterAsync" in auth
 
 
+def test_unity_user_residence_contract_is_backward_compatible():
+    auth = _read(UNITY / "Auth/FastGameAuth.cs")
+    models = _read(UNITY / "Models/Models.cs")
+    contract = _read(ROOT / "CONTRACT.md")
+
+    assert "public string ResidenceCountryCode;" in models
+    assert "public string ResidenceSubdivisionCode;" in models
+    assert 'FastGameJson.GetString(obj, "residence_country_code")' in auth
+    assert 'FastGameJson.GetString(obj, "residence_subdivision_code")' in auth
+    assert '"residence_country_code"' in auth
+    assert '"residence_subdivision_code"' in auth
+    assert "UpdateResidenceAsync" in auth
+    assert "UpdateProfileAsync(" in auth
+    # Existing source-compatible signature remains alongside the residence overload.
+    assert """public async Task<FastGameSignupResult> SignupAsync(
+            string email,
+            string password,
+            string passwordConfirm,
+            string fullName = null,
+            string phone = null)""" in auth
+    assert "nullable `residence_country_code`" in contract
+
+
 def test_unity_modules_present():
     for rel in (
         "FastGameClient.cs",

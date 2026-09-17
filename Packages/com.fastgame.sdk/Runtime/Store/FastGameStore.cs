@@ -109,7 +109,10 @@ namespace FastGame
                 return await PurchaseOrRestoreAsync(id, true);
             }
 
-            var tcs = new TaskCompletionSource<(string, string, bool)>();
+            var tcs = new TaskCompletionSource<(
+                string StoreProductId,
+                string PurchaseToken,
+                bool AlreadyOwned)>();
             lock (Gate)
             {
                 InFlight = tcs.Task;

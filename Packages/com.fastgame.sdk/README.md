@@ -121,11 +121,15 @@ await client.Auth.CompleteAccountAsync(password, passwordConfirm, fullName);
 await client.Auth.RequestSignupVerificationAsync("");   // Verify → signup OTP
 await client.Auth.VerifySignupVerificationAsync("", code);
 await client.Auth.SignupAsync(null, password, passwordConfirm, fullName, null);  // Register
+await client.Auth.SignupAsync(null, password, passwordConfirm, fullName, null,
+    residenceCountryCode, residenceSubdivisionCode); // residence-aware overload
 // From Enter Password: Send Auth Code (recovery) → Verify Auth Code → Assign New Password
 await client.Auth.RequestPasswordRecoveryAsync("");
 await client.Auth.VerifyPasswordRecoveryAsync("", code);
 await client.Auth.ConfirmPasswordRecoveryAsync("", newPassword, newPasswordConfirm);
 await client.Auth.UpdateFullNameAsync(fullName);
+await client.Auth.UpdateResidenceAsync(residenceCountryCode, residenceSubdivisionCode);
+await client.Auth.UpdateProfileAsync(fullName, residenceCountryCode, residenceSubdivisionCode);
 // Or explicit:
 await client.Auth.LoginAsync(enter.Identity, password,
     enter.IsEmail ? FastGameIdentityChannel.Email : FastGameIdentityChannel.Phone);
@@ -133,7 +137,7 @@ await client.Auth.LoginAsync(enter.Identity, password,
 // Register with explicit contacts:
 await client.Auth.SignupAsync(email, password, passwordConfirm, fullName, phone);
 
-var me = await client.Auth.GetMeAsync(); // Id, Email, Phone, FullName, …
+var me = await client.Auth.GetMeAsync(); // includes nullable ResidenceCountryCode / ResidenceSubdivisionCode
 var session = await client.Content.PrepareSessionAsync("sandbox-capsule", "sandbox", "box-arena", lang: "fa");
 var shop = await client.Shop.GetCatalogAsync("sandbox-capsule", lang: "fa");
 // expandI18n: true only when you need the full translations map (default: resolved Label only)

@@ -17,6 +17,8 @@ namespace FastGame
         public string UserId;
         public string Email;
         public string Phone;
+        public string ResidenceCountryCode;
+        public string ResidenceSubdivisionCode;
     }
 
     /// <summary>
@@ -292,7 +294,28 @@ namespace FastGame
             string password,
             string passwordConfirm,
             string fullName = null,
-            string phone = null)
+            string phone = null) =>
+            await SignupAsync(
+                email,
+                password,
+                passwordConfirm,
+                fullName,
+                phone,
+                residenceCountryCode: null,
+                residenceSubdivisionCode: null);
+
+        /// <summary>
+        /// Register with optional ISO 3166 residence codes. Null or whitespace values are omitted.
+        /// The five-argument overload remains the compatibility entry point.
+        /// </summary>
+        public async Task<FastGameSignupResult> SignupAsync(
+            string email,
+            string password,
+            string passwordConfirm,
+            string fullName,
+            string phone,
+            string residenceCountryCode,
+            string residenceSubdivisionCode)
         {
             var e = string.IsNullOrWhiteSpace(email) ? null : email.Trim();
             var p = string.IsNullOrWhiteSpace(phone) ? null : phone.Trim();
@@ -348,6 +371,12 @@ namespace FastGame
                     body["phone"] = p;
                 if (!string.IsNullOrEmpty(fullName))
                     body["full_name"] = fullName;
+                var countryCode = NormalizeOptionalCode(residenceCountryCode);
+                var subdivisionCode = NormalizeOptionalCode(residenceSubdivisionCode);
+                if (countryCode != null)
+                    body["residence_country_code"] = countryCode;
+                if (subdivisionCode != null)
+                    body["residence_subdivision_code"] = subdivisionCode;
                 var gameCode = (_config.GameCode ?? "").Trim();
                 if (!string.IsNullOrEmpty(gameCode))
                     body["game_code"] = gameCode;
@@ -359,6 +388,8 @@ namespace FastGame
                     UserId = FastGameJson.GetString(obj, "id"),
                     Email = FastGameJson.GetString(obj, "email") ?? e,
                     Phone = FastGameJson.GetString(obj, "phone") ?? p,
+                    ResidenceCountryCode = FastGameJson.GetString(obj, "residence_country_code") ?? countryCode,
+                    ResidenceSubdivisionCode = FastGameJson.GetString(obj, "residence_subdivision_code") ?? subdivisionCode,
                 };
                 var loginId = e ?? p;
                 await LoginAsync(loginId, password);
@@ -450,12 +481,40 @@ namespace FastGame
         /// <summary>PATCH /base/login/me — display name only. Requires login.</summary>
         public async Task<UserProfile> UpdateFullNameAsync(string fullName)
         {
-            if (!IsLoggedIn)
-                throw new FastGameException("Not logged in");
             var body = new Dictionary<string, object> { { "full_name", fullName ?? "" } };
-            var text = await _http.RequestRawAsync("PATCH", "/base/login/me", FastGameJson.Stringify(body));
-            CurrentUser = ParseUserProfile(text);
-            return CurrentUser;
+            return await UpdateProfileAsync(body);
+        }
+
+        /// <summary>
+        /// Update residence on the current profile. Null or whitespace clears the corresponding value.
+        /// </summary>
+        public Task<UserProfile> UpdateResidenceAsync(
+            string residenceCountryCode,
+            string residenceSubdivisionCode)
+        {
+            var body = new Dictionary<string, object>
+            {
+                { "residence_country_code", NormalizeOptionalCode(residenceCountryCode) },
+                { "residence_subdivision_code", NormalizeOptionalCode(residenceSubdivisionCode) },
+            };
+            return UpdateProfileAsync(body);
+        }
+
+        /// <summary>
+        /// Update display name and residence in one PATCH. Null residence values clear existing values.
+        /// </summary>
+        public Task<UserProfile> UpdateProfileAsync(
+            string fullName,
+            string residenceCountryCode,
+            string residenceSubdivisionCode)
+        {
+            var body = new Dictionary<string, object>
+            {
+                { "full_name", fullName ?? "" },
+                { "residence_country_code", NormalizeOptionalCode(residenceCountryCode) },
+                { "residence_subdivision_code", NormalizeOptionalCode(residenceSubdivisionCode) },
+            };
+            return UpdateProfileAsync(body);
         }
 
         /// <summary>Signup OTP step 1/2: send code for a new identity. Empty identity → ENTER store.</summary>
@@ -732,10 +791,27 @@ namespace FastGame
                 EmailVerified = FastGameJson.GetBool(obj, "email_verified"),
                 PhoneVerified = FastGameJson.GetBool(obj, "phone_verified"),
                 FullName = FastGameJson.GetString(obj, "full_name"),
+                ResidenceCountryCode = FastGameJson.GetString(obj, "residence_country_code"),
+                ResidenceSubdivisionCode = FastGameJson.GetString(obj, "residence_subdivision_code"),
                 IsActive = FastGameJson.GetBool(obj, "is_active", true),
                 IsSuperuser = FastGameJson.GetBool(obj, "is_superuser"),
             };
         }
+
+        async Task<UserProfile> UpdateProfileAsync(Dictionary<string, object> body)
+        {
+            if (!IsLoggedIn)
+                throw new FastGameException("Not logged in");
+            var text = await _http.RequestRawAsync(
+                "PATCH",
+                "/base/login/me",
+                FastGameJson.Stringify(body));
+            CurrentUser = ParseUserProfile(text);
+            return CurrentUser;
+        }
+
+        static string NormalizeOptionalCode(string value) =>
+            string.IsNullOrWhiteSpace(value) ? null : value.Trim().ToUpperInvariant();
 
         bool TryFillFromEntered(out string email, out string phone)
         {

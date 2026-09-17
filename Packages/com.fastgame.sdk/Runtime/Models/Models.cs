@@ -214,6 +214,10 @@ namespace FastGame.Models
         public bool EmailVerified;
         public bool PhoneVerified;
         public string FullName;
+        /// <summary>ISO 3166-1 alpha-2 residence country, or null when unset.</summary>
+        public string ResidenceCountryCode;
+        /// <summary>ISO 3166-2 residence subdivision, or null when unset.</summary>
+        public string ResidenceSubdivisionCode;
         public bool IsActive = true;
         public bool IsSuperuser;
     }

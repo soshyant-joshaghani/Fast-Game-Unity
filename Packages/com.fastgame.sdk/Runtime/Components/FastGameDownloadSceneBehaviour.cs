@@ -191,8 +191,8 @@ namespace FastGame
         static bool IsTipNotPublished(FastGameException e)
         {
             var msg = e.Message ?? "";
-            return msg.Contains("404", StringComparison.Ordinal)
-                || msg.Contains("Tip not published", StringComparison.OrdinalIgnoreCase);
+            return msg.IndexOf("404", StringComparison.Ordinal) >= 0
+                || msg.IndexOf("Tip not published", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         void SetProgress(float normalized, string message)

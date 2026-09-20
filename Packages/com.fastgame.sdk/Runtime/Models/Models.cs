@@ -85,6 +85,8 @@ namespace FastGame.Models
         /// <summary>Per-game new-user OTP gates (provider ready + verify flag).</summary>
         public bool AuthVerifyPhone;
         public bool AuthVerifyEmail;
+        /// <summary>When true, Enter always routes to OTP login (no password).</summary>
+        public bool AuthForceOtp;
     }
 
     public sealed class Character
@@ -220,6 +222,29 @@ namespace FastGame.Models
         public string ResidenceSubdivisionCode;
         public bool IsActive = true;
         public bool IsSuperuser;
+    }
+
+    /// <summary>One ISO 3166-2 subdivision row from GET /base/users/residence-options.</summary>
+    public sealed class ResidenceSubdivision
+    {
+        public string Code;
+        public string Name;
+    }
+
+    /// <summary>One ISO 3166-1 country with nested subdivisions.</summary>
+    public sealed class ResidenceCountry
+    {
+        public string Code;
+        public string Name;
+        public List<ResidenceSubdivision> Subdivisions = new List<ResidenceSubdivision>();
+    }
+
+    /// <summary>Versioned residence selector catalogue (public, no auth).</summary>
+    public sealed class ResidenceCatalog
+    {
+        public string Version;
+        public string Lang;
+        public List<ResidenceCountry> Countries = new List<ResidenceCountry>();
     }
 
     public sealed class AdvertisementRequest

@@ -38,6 +38,7 @@ namespace FastGame
             {
                 d.AuthVerifyPhone = FastGameJson.GetBool(authReq, "verify_phone");
                 d.AuthVerifyEmail = FastGameJson.GetBool(authReq, "verify_email");
+                d.AuthForceOtp = FastGameJson.GetBool(authReq, "force_otp");
             }
             foreach (var item in FastGameJson.GetArray(o, "modes") ?? new List<object>())
             {

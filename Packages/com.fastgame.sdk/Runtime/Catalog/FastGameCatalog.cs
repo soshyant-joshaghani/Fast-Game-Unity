@@ -45,15 +45,17 @@ namespace FastGame
             return FastGameDto.ParseGameDetail(FastGameJson.ParseObject(text));
         }
 
-        /// <summary>Public auth gates for new-user OTP (no login required).</summary>
-        public async Task<(bool VerifyPhone, bool VerifyEmail)> GetAuthRequirementsAsync(string gameId)
+        /// <summary>Public auth gates for OTP routing (no login required).</summary>
+        public async Task<(bool VerifyPhone, bool VerifyEmail, bool ForceOtp)> GetAuthRequirementsAsync(
+            string gameId)
         {
             var text = await _http.RequestRawAsync(
                 "GET", $"/apps/games/catalog/{Escape(gameId)}/auth-requirements");
             var o = FastGameJson.ParseObject(text);
             return (
                 FastGameJson.GetBool(o, "verify_phone"),
-                FastGameJson.GetBool(o, "verify_email"));
+                FastGameJson.GetBool(o, "verify_email"),
+                FastGameJson.GetBool(o, "force_otp"));
         }
 
         /// <summary>

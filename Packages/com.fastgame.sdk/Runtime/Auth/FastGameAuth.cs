@@ -517,6 +517,27 @@ namespace FastGame
             return UpdateProfileAsync(body);
         }
 
+        /// <summary>
+        /// Public ISO 3166 residence selector catalogue.
+        /// <paramref name="lang"/> localizes display names (default <c>fa</c>);
+        /// <paramref name="country"/> filters to one ISO 3166-1 alpha-2 code (e.g. <c>IR</c>).
+        /// </summary>
+        public async Task<ResidenceCatalog> GetResidenceOptionsAsync(
+            string country = null,
+            string lang = "fa")
+        {
+            var path = FastGameHttp.AppendI18nQuery(
+                "/base/users/residence-options",
+                string.IsNullOrWhiteSpace(lang) ? null : lang.Trim());
+            if (!string.IsNullOrWhiteSpace(country))
+            {
+                path += path.Contains("?") ? "&" : "?";
+                path += "country=" + UnityEngine.Networking.UnityWebRequest.EscapeURL(country.Trim());
+            }
+            var text = await _http.RequestRawAsync("GET", path);
+            return ParseResidenceCatalog(text);
+        }
+
         /// <summary>Signup OTP step 1/2: send code for a new identity. Empty identity → ENTER store.</summary>
         public Task RequestSignupVerificationAsync(string identity) =>
             RequestSignupVerificationAsync(email: null, phone: null, identity: identity);
@@ -549,6 +570,62 @@ namespace FastGame
             var body = BuildContactBody(gameCode, email, phone);
             body["code"] = code.Trim();
             await _http.RequestRawAsync("POST", "/base/signup/verify", FastGameJson.Stringify(body));
+        }
+
+        /// <summary>
+        /// Force-OTP login step 1/2: send OTP (create-or-login). Empty identity → ENTER store.
+        /// </summary>
+        public Task RequestLoginOtpAsync(string identity) =>
+            RequestLoginOtpAsync(email: null, phone: null, identity: identity);
+
+        public async Task RequestLoginOtpAsync(
+            string email = null,
+            string phone = null,
+            string identity = null)
+        {
+            var gameCode = RequireGameCode();
+            ResolveContact(identity, ref email, ref phone);
+            var body = BuildContactBody(gameCode, email, phone);
+            await _http.RequestRawAsync("POST", "/base/login/otp/request", FastGameJson.Stringify(body));
+        }
+
+        /// <summary>
+        /// Force-OTP login step 2/2: verify OTP and set access token. Empty identity → ENTER store.
+        /// </summary>
+        public Task VerifyLoginOtpAsync(string identity, string code) =>
+            VerifyLoginOtpAsync(code, email: null, phone: null, identity: identity);
+
+        public async Task VerifyLoginOtpAsync(
+            string code,
+            string email = null,
+            string phone = null,
+            string identity = null)
+        {
+            var gameCode = RequireGameCode();
+            if (string.IsNullOrWhiteSpace(code))
+            {
+                LastLoginSucceeded = false;
+                throw new FastGameException("Verification code is required");
+            }
+            ResolveContact(identity, ref email, ref phone);
+            var body = BuildContactBody(gameCode, email, phone);
+            body["code"] = code.Trim();
+            try
+            {
+                var text = await _http.RequestRawAsync(
+                    "POST", "/base/login/otp/verify", FastGameJson.Stringify(body));
+                var obj = FastGameJson.ParseObject(text);
+                var token = FastGameJson.GetString(obj, "access_token");
+                if (string.IsNullOrEmpty(token))
+                    throw new FastGameException("Login OTP response missing access_token");
+                SetAccessToken(token);
+                LastLoginSucceeded = true;
+            }
+            catch
+            {
+                LastLoginSucceeded = false;
+                throw;
+            }
         }
 
         /// <summary>
@@ -796,6 +873,38 @@ namespace FastGame
                 IsActive = FastGameJson.GetBool(obj, "is_active", true),
                 IsSuperuser = FastGameJson.GetBool(obj, "is_superuser"),
             };
+        }
+
+        static ResidenceCatalog ParseResidenceCatalog(string text)
+        {
+            var obj = FastGameJson.ParseObject(text) ?? new Dictionary<string, object>();
+            var catalog = new ResidenceCatalog
+            {
+                Version = FastGameJson.GetString(obj, "version"),
+                Lang = FastGameJson.GetString(obj, "lang"),
+            };
+            foreach (var item in FastGameJson.GetArray(obj, "countries") ?? new List<object>())
+            {
+                var c = item as Dictionary<string, object>;
+                if (c == null) continue;
+                var country = new ResidenceCountry
+                {
+                    Code = FastGameJson.GetString(c, "code"),
+                    Name = FastGameJson.GetString(c, "name"),
+                };
+                foreach (var sub in FastGameJson.GetArray(c, "subdivisions") ?? new List<object>())
+                {
+                    var s = sub as Dictionary<string, object>;
+                    if (s == null) continue;
+                    country.Subdivisions.Add(new ResidenceSubdivision
+                    {
+                        Code = FastGameJson.GetString(s, "code"),
+                        Name = FastGameJson.GetString(s, "name"),
+                    });
+                }
+                catalog.Countries.Add(country);
+            }
+            return catalog;
         }
 
         async Task<UserProfile> UpdateProfileAsync(Dictionary<string, object> body)

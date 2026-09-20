@@ -113,7 +113,11 @@ var enter = await client.Auth.EnterAsync(identity);
 //           exists && PasswordRequired  → Signup pin (CompleteAccount; Register → /complete)
 //           !exists + verify ON         → Verify (signup OTP) → Register
 //           !exists + verify OFF        → Signup
-var (verifyPhone, verifyEmail) = await client.Catalog.GetAuthRequirementsAsync(client.Config.GameCode);
+var (verifyPhone, verifyEmail, forceOtp) =
+    await client.Catalog.GetAuthRequirementsAsync(client.Config.GameCode);
+// force_otp → always Verify (login OTP) → Authenticated (access_token)
+await client.Auth.RequestLoginOtpAsync("");
+await client.Auth.VerifyLoginOtpAsync("", code);
 
 // With stored identity (after Enter):
 await client.Auth.LoginAsync("", password);
@@ -130,6 +134,7 @@ await client.Auth.ConfirmPasswordRecoveryAsync("", newPassword, newPasswordConfi
 await client.Auth.UpdateFullNameAsync(fullName);
 await client.Auth.UpdateResidenceAsync(residenceCountryCode, residenceSubdivisionCode);
 await client.Auth.UpdateProfileAsync(fullName, residenceCountryCode, residenceSubdivisionCode);
+var residence = await client.Auth.GetResidenceOptionsAsync(country: "IR", lang: "fa");
 // Or explicit:
 await client.Auth.LoginAsync(enter.Identity, password,
     enter.IsEmail ? FastGameIdentityChannel.Email : FastGameIdentityChannel.Phone);

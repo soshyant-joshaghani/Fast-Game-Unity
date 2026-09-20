@@ -114,15 +114,24 @@ def test_unity_user_residence_contract_is_backward_compatible():
     auth = _read(UNITY / "Auth/FastGameAuth.cs")
     models = _read(UNITY / "Models/Models.cs")
     contract = _read(ROOT / "CONTRACT.md")
+    readme = _read(ROOT / "Packages/com.fastgame.sdk/README.md")
 
     assert "public string ResidenceCountryCode;" in models
     assert "public string ResidenceSubdivisionCode;" in models
+    assert "class ResidenceSubdivision" in models
+    assert "class ResidenceCountry" in models
+    assert "class ResidenceCatalog" in models
     assert 'FastGameJson.GetString(obj, "residence_country_code")' in auth
     assert 'FastGameJson.GetString(obj, "residence_subdivision_code")' in auth
     assert '"residence_country_code"' in auth
     assert '"residence_subdivision_code"' in auth
     assert "UpdateResidenceAsync" in auth
     assert "UpdateProfileAsync(" in auth
+    assert "GetResidenceOptionsAsync" in auth
+    assert "/base/users/residence-options" in auth
+    assert """public async Task<ResidenceCatalog> GetResidenceOptionsAsync(
+            string country = null,
+            string lang = "fa")""" in auth
     # Existing source-compatible signature remains alongside the residence overload.
     assert """public async Task<FastGameSignupResult> SignupAsync(
             string email,
@@ -131,6 +140,8 @@ def test_unity_user_residence_contract_is_backward_compatible():
             string fullName = null,
             string phone = null)""" in auth
     assert "nullable `residence_country_code`" in contract
+    assert "residence-options" in contract
+    assert "GetResidenceOptionsAsync" in readme
 
 
 def test_unity_modules_present():
@@ -423,3 +434,37 @@ def test_unity_entity_components_and_flow_pins():
     assert "SelectChoice" in dialogue
     assert "GetDialogueAsync" in dialogue
     assert "Flow Runtime" in contract or "FlowRuntime" in contract
+
+
+def test_unity_force_otp_auth():
+    auth = _read(UNITY / "Auth/FastGameAuth.cs")
+    behaviour = _read(UNITY / "Components/FastGameAuthBehaviour.cs")
+    catalog = _read(UNITY / "Catalog/FastGameCatalog.cs")
+    dto = _read(UNITY / "Models/FastGameDto.cs")
+    models = _read(UNITY / "Models/Models.cs")
+    contract = _read(ROOT / "CONTRACT.md")
+
+    assert 'FastGameJson.GetBool(authReq, "force_otp")' in dto
+    assert "public bool AuthForceOtp;" in models
+    assert "ForceOtp" in catalog
+    assert 'FastGameJson.GetBool(o, "force_otp")' in catalog
+    assert "/base/login/otp/request" in auth
+    assert "/base/login/otp/verify" in auth
+    assert "RequestLoginOtpAsync" in auth
+    assert "VerifyLoginOtpAsync" in auth
+    assert 'FastGameJson.GetString(obj, "access_token")' in auth
+    assert "SetAccessToken(token)" in auth
+
+    assert "enum FastGameVerifyAuthPin" in behaviour
+    assert "Authenticated," in behaviour
+    assert "IsForceOtpFlow" in behaviour
+    assert "OnAuthenticated" in behaviour
+    assert "RequestLoginOtpAsync" in behaviour
+    assert "VerifyLoginOtpAsync" in behaviour
+    assert "IsForceOtpFlow = false" in behaviour
+    assert "RaiseAuthComplete(FastGameAuthCompleteReason.Login)" in behaviour
+
+    assert "force_otp" in contract
+    assert "/base/login/otp/request" in contract
+    assert "/base/login/otp/verify" in contract
+    assert "**Authenticated**" in contract

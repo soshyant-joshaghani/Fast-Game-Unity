@@ -28,6 +28,15 @@ namespace FastGame
         Failed,
     }
 
+    /// <summary>Verify Auth Code outcome — mirrors UE EFastGameVerifyAuthPin.</summary>
+    public enum FastGameVerifyAuthPin
+    {
+        Signup,
+        AssignNewPassword,
+        Authenticated,
+        Failed,
+    }
+
     [Serializable] public class FastGameBoolEvent : UnityEvent<bool> { }
     [Serializable] public class FastGameStringEvent : UnityEvent<string> { }
     [Serializable] public class FastGameAuthResultEvent : UnityEvent<bool, int, string> { }
@@ -153,6 +162,8 @@ namespace FastGame
         [FormerlySerializedAs("OnVerifySignup")]
         public UnityEvent OnVerifySignup;
         public UnityEvent OnOtpVerified;
+        [Tooltip("Force-OTP verify pin — session established (mirrors Authenticated).")]
+        public UnityEvent OnAuthenticated;
         public FastGameStringEvent OnEnterFailed;
         public FastGameEnterResultEvent OnEnterComplete;
         public UnityEvent OnBackToEnterId;
@@ -182,6 +193,8 @@ namespace FastGame
         public FastGameEnterResult LastEnter { get; private set; }
         public FastGameEnterRoute LastEnterRoute { get; private set; } = FastGameEnterRoute.Failed;
         public bool IsForgotPasswordFlow { get; private set; }
+        /// <summary>True when catalog <c>force_otp</c> routed Enter → OTP login.</summary>
+        public bool IsForceOtpFlow { get; private set; }
 
         bool _sceneCompleted;
 
@@ -354,6 +367,7 @@ namespace FastGame
         public void BackToEnterId()
         {
             IsForgotPasswordFlow = false;
+            IsForceOtpFlow = false;
             ClearError();
             ShowEnterIdPage();
             OnBackToEnterId?.Invoke();
@@ -389,6 +403,7 @@ namespace FastGame
             LastEnter = null;
             LastEnterRoute = FastGameEnterRoute.Failed;
             IsForgotPasswordFlow = false;
+            IsForceOtpFlow = false;
             ShowEnterIdPage();
             OnBackToEnterId?.Invoke();
 
@@ -426,24 +441,35 @@ namespace FastGame
                 LastEnter = enter;
 
                 FastGameEnterRoute route;
-                if (!enter.Exists)
+                var forceOtp = false;
+                var gameCode = Client.Config.GameCode;
+                bool verifyPhone = false, verifyEmail = false;
+                if (!string.IsNullOrWhiteSpace(gameCode))
                 {
-                    var needsVerify = false;
-                    var gameCode = Client.Config.GameCode;
-                    if (!string.IsNullOrWhiteSpace(gameCode))
-                    {
-                        var (verifyPhone, verifyEmail) =
-                            await Client.Catalog.GetAuthRequirementsAsync(gameCode);
-                        needsVerify = enter.IsPhone ? verifyPhone : verifyEmail;
-                    }
-                    route = needsVerify
-                        ? FastGameEnterRoute.VerifyId
-                        : FastGameEnterRoute.Register;
+                    (verifyPhone, verifyEmail, forceOtp) =
+                        await Client.Catalog.GetAuthRequirementsAsync(gameCode);
                 }
-                else if (enter.PasswordRequired)
-                    route = FastGameEnterRoute.CompleteAccount;
+
+                if (forceOtp)
+                {
+                    IsForceOtpFlow = true;
+                    route = FastGameEnterRoute.VerifyId;
+                }
                 else
-                    route = FastGameEnterRoute.Login;
+                {
+                    IsForceOtpFlow = false;
+                    if (!enter.Exists)
+                    {
+                        var needsVerify = enter.IsPhone ? verifyPhone : verifyEmail;
+                        route = needsVerify
+                            ? FastGameEnterRoute.VerifyId
+                            : FastGameEnterRoute.Register;
+                    }
+                    else if (enter.PasswordRequired)
+                        route = FastGameEnterRoute.CompleteAccount;
+                    else
+                        route = FastGameEnterRoute.Login;
+                }
 
                 IsForgotPasswordFlow = false;
                 LastEnterRoute = route;
@@ -472,6 +498,7 @@ namespace FastGame
             catch (Exception e)
             {
                 LastEnterRoute = FastGameEnterRoute.Failed;
+                IsForceOtpFlow = false;
                 var msg = e.Message;
                 if (AutoSwitchPages)
                     ShowEnterIdPage();
@@ -533,7 +560,9 @@ namespace FastGame
             ClearError();
             try
             {
-                if (LastEnterRoute == FastGameEnterRoute.VerifyId)
+                if (IsForceOtpFlow)
+                    await Client.Auth.RequestLoginOtpAsync(ReadIdentity());
+                else if (LastEnterRoute == FastGameEnterRoute.VerifyId)
                     await Client.Auth.RequestSignupVerificationAsync(ReadIdentity());
                 else if (IsForgotPasswordFlow)
                     await Client.Auth.RequestPasswordRecoveryAsync(ReadIdentity());
@@ -556,6 +585,17 @@ namespace FastGame
             ClearError();
             try
             {
+                if (IsForceOtpFlow)
+                {
+                    await Client.Auth.VerifyLoginOtpAsync(ReadIdentity(), ReadOtp());
+                    OnRecoveryStepComplete?.Invoke(true, 200, "otp ok");
+                    OnAuthenticated?.Invoke();
+                    OnOtpVerified?.Invoke();
+                    OnLoginComplete?.Invoke(true, 200, "ok");
+                    RaiseAuthComplete(FastGameAuthCompleteReason.Login);
+                    return;
+                }
+
                 if (LastEnterRoute == FastGameEnterRoute.VerifyId)
                 {
                     await Client.Auth.VerifySignupVerificationAsync(ReadIdentity(), ReadOtp());

@@ -957,14 +957,30 @@ namespace FastGame
         {
             var e = string.IsNullOrWhiteSpace(email) ? null : email.Trim();
             var p = string.IsNullOrWhiteSpace(phone) ? null : phone.Trim();
+            var id = string.IsNullOrWhiteSpace(identity) ? null : identity.Trim();
+            // OTP digits on the identity arg → use ENTER store instead.
+            if (id != null && id.Length >= 4 && id.Length <= 8)
+            {
+                var digitsOnly = true;
+                for (var i = 0; i < id.Length; i++)
+                {
+                    if (!char.IsDigit(id[i]))
+                    {
+                        digitsOnly = false;
+                        break;
+                    }
+                }
+                if (digitsOnly)
+                    id = null;
+            }
             if (e == null && p == null)
             {
-                if (string.IsNullOrWhiteSpace(identity))
+                if (string.IsNullOrWhiteSpace(id))
                 {
                     if (!TryFillFromEntered(out e, out p))
                         throw new FastGameException("No contact provided and no ENTER-stored identity");
                 }
-                else if (!FastGameIdentity.TrySplitContact(identity, out e, out p))
+                else if (!FastGameIdentity.TrySplitContact(id, out e, out p))
                 {
                     throw new FastGameException("Provide a valid email or phone number");
                 }

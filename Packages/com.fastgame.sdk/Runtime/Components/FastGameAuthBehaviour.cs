@@ -258,7 +258,14 @@ namespace FastGame
                 SceneManager.LoadScene(NextScene);
         }
 
-        string ReadIdentity() => FastGameUiText.Read(IdentityField, Identity).Trim();
+        string ReadIdentity()
+        {
+            // Prefer the Enter ID field when filled; empty field must not wipe Enter-stored Identity.
+            var fromField = FastGameUiText.Read(IdentityField, "").Trim();
+            if (!string.IsNullOrEmpty(fromField))
+                return fromField;
+            return (Identity ?? "").Trim();
+        }
         string ReadFullName() => FastGameUiText.Read(FullNameField, FullName);
         string ReadLoginPassword() => FastGameUiText.Read(LoginPasswordField, Password);
         string ReadSignupPassword() => FastGameUiText.Read(SignupPasswordField, Password);
@@ -560,12 +567,17 @@ namespace FastGame
             ClearError();
             try
             {
-                if (IsForceOtpFlow)
-                    await Client.Auth.RequestLoginOtpAsync(ReadIdentity());
-                else if (LastEnterRoute == FastGameEnterRoute.VerifyId)
-                    await Client.Auth.RequestSignupVerificationAsync(ReadIdentity());
+                var identity = ReadOtpContactIdentity();
+                if (LastEnterRoute == FastGameEnterRoute.VerifyId)
+                {
+                    await EnsureForceOtpFlagAsync();
+                    if (IsForceOtpFlow)
+                        await Client.Auth.RequestLoginOtpAsync(identity);
+                    else
+                        await Client.Auth.RequestSignupVerificationAsync(identity);
+                }
                 else if (IsForgotPasswordFlow)
-                    await Client.Auth.RequestPasswordRecoveryAsync(ReadIdentity());
+                    await Client.Auth.RequestPasswordRecoveryAsync(identity);
                 else
                     throw new FastGameException("Send Auth Code: use after Verify Id or Begin Forgot");
                 OnRecoveryStepComplete?.Invoke(true, 200, "otp sent");
@@ -585,20 +597,22 @@ namespace FastGame
             ClearError();
             try
             {
-                if (IsForceOtpFlow)
-                {
-                    await Client.Auth.VerifyLoginOtpAsync(ReadIdentity(), ReadOtp());
-                    OnRecoveryStepComplete?.Invoke(true, 200, "otp ok");
-                    OnAuthenticated?.Invoke();
-                    OnOtpVerified?.Invoke();
-                    OnLoginComplete?.Invoke(true, 200, "ok");
-                    RaiseAuthComplete(FastGameAuthCompleteReason.Login);
-                    return;
-                }
-
+                var identity = ReadOtpContactIdentity();
                 if (LastEnterRoute == FastGameEnterRoute.VerifyId)
                 {
-                    await Client.Auth.VerifySignupVerificationAsync(ReadIdentity(), ReadOtp());
+                    await EnsureForceOtpFlagAsync();
+                    if (IsForceOtpFlow)
+                    {
+                        await Client.Auth.VerifyLoginOtpAsync(identity, ReadOtp());
+                        OnRecoveryStepComplete?.Invoke(true, 200, "otp ok");
+                        OnAuthenticated?.Invoke();
+                        OnOtpVerified?.Invoke();
+                        OnLoginComplete?.Invoke(true, 200, "ok");
+                        RaiseAuthComplete(FastGameAuthCompleteReason.Login);
+                        return;
+                    }
+
+                    await Client.Auth.VerifySignupVerificationAsync(identity, ReadOtp());
                     OnRecoveryStepComplete?.Invoke(true, 200, "otp ok");
                     if (AutoSwitchPages)
                         ShowEnterSignupPage();
@@ -609,7 +623,7 @@ namespace FastGame
                 if (!IsForgotPasswordFlow)
                     throw new FastGameException("Verify Auth Code: use after Verify Id or Begin Forgot");
 
-                await Client.Auth.VerifyPasswordRecoveryAsync(ReadIdentity(), ReadOtp());
+                await Client.Auth.VerifyPasswordRecoveryAsync(identity, ReadOtp());
                 OnRecoveryStepComplete?.Invoke(true, 200, "otp ok");
                 if (AutoSwitchPages)
                     ShowEnterRecoveryResetPage();
@@ -619,6 +633,49 @@ namespace FastGame
             {
                 FailAuth(OnRecoveryStepComplete, e);
             }
+        }
+
+        async Task EnsureForceOtpFlagAsync()
+        {
+            if (IsForceOtpFlow)
+                return;
+            var gameCode = Client?.Config?.GameCode;
+            if (string.IsNullOrWhiteSpace(gameCode))
+                return;
+            try
+            {
+                var (_, _, forceOtp) = await Client.Catalog.GetAuthRequirementsAsync(gameCode);
+                if (forceOtp)
+                    IsForceOtpFlow = true;
+            }
+            catch
+            {
+                // Keep existing flag; send/verify will surface the error.
+            }
+        }
+
+        /// <summary>OTP canvas contact — never treat the OTP digits as the phone/email.</summary>
+        string ReadOtpContactIdentity()
+        {
+            var id = ReadIdentity();
+            if (LooksLikeOtpCode(id))
+                return "";
+            return id;
+        }
+
+        static bool LooksLikeOtpCode(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return false;
+            var s = value.Trim();
+            if (s.Length < 4 || s.Length > 8)
+                return false;
+            for (var i = 0; i < s.Length; i++)
+            {
+                if (!char.IsDigit(s[i]))
+                    return false;
+            }
+            return true;
         }
 
         public async Task VerifyPasswordRecoveryAsync() => await VerifyOtpAsync();

@@ -12,6 +12,14 @@ namespace FastGame
         public string Steamid;
     }
 
+    public sealed class SteamResyncResult
+    {
+        public int Requested;
+        public int Pushed;
+        public int Skipped;
+        public int Failed;
+    }
+
     public sealed class FastGameSignupResult
     {
         public string UserId;
@@ -834,10 +842,40 @@ namespace FastGame
                 body["identity"] = identity;
             var text = await _http.RequestRawAsync("POST", "/base/steam/link", FastGameJson.Stringify(body));
             var obj = FastGameJson.ParseObject(text);
-            return new SteamLinkStatus
+            var status = new SteamLinkStatus
             {
                 Linked = FastGameJson.GetBool(obj, "linked"),
                 Steamid = FastGameJson.GetString(obj, "steamid"),
+            };
+            if (status.Linked)
+            {
+                try
+                {
+                    await ResyncSteamAchievementsAsync();
+                }
+                catch (Exception)
+                {
+                    // Link succeeded. Steam achievement push can be retried.
+                }
+            }
+            return status;
+        }
+
+        /// <summary>
+        /// Push owned Fast Game achievements to Steam. API names must already be published in Steamworks.
+        /// </summary>
+        public async Task<SteamResyncResult> ResyncSteamAchievementsAsync()
+        {
+            var gameCode = RequireGameCode();
+            var path = "/apps/games/content/" + Uri.EscapeDataString(gameCode) + "/achievements/steam/resync";
+            var text = await _http.RequestRawAsync("POST", path, "{}");
+            var obj = FastGameJson.ParseObject(text) ?? new Dictionary<string, object>();
+            return new SteamResyncResult
+            {
+                Requested = FastGameJson.GetInt(obj, "requested"),
+                Pushed = FastGameJson.GetInt(obj, "pushed"),
+                Skipped = FastGameJson.GetInt(obj, "skipped"),
+                Failed = FastGameJson.GetInt(obj, "failed"),
             };
         }
 

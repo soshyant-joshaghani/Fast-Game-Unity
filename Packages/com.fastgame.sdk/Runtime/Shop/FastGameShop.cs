@@ -683,7 +683,7 @@ namespace FastGame
                 var result = new PaymentInitiateResult
                 {
                     Authority = FastGameJson.GetString(o, "authority"),
-                    PaymentUrl = null,
+                    PaymentUrl = FastGameJson.GetString(o, "payment_url"),
                     PaymentToken = FastGameJson.GetString(o, "payment_token"),
                     Amount = FastGameJson.GetInt(o, "amount"),
                     StoreProductId = FastGameJson.GetString(o, "store_product_id"),

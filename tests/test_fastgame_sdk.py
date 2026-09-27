@@ -12,6 +12,16 @@ def _read(rel: Path) -> str:
     return rel.read_text(encoding="utf-8")
 
 
+def test_unity_steam_resync_after_link():
+    auth = _read(UNITY / "Auth/FastGameAuth.cs")
+    assert "ResyncSteamAchievementsAsync" in auth
+    assert "/achievements/steam/resync" in auth
+    link = auth.split("LinkSteamWithTicketAsync", 1)[1].split("public async Task<SteamLinkStatus> GetSteamStatusAsync", 1)[0]
+    assert "ResyncSteamAchievementsAsync" in link
+    contract = _read(ROOT / "CONTRACT.md")
+    assert "achievements/steam/resync" in contract
+
+
 def test_unity_unlock_and_ensure_setup():
     shop = _read(UNITY / "Shop/FastGameShop.cs")
     client = _read(UNITY / "Components/FastGameClientBehaviour.cs")

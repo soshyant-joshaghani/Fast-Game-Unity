@@ -1,3 +1,5 @@
+[![](./FoxG-Kit.png)](./FoxG-Kit.png)
+
 # Fast Game Unity
 
 Standalone **Unity 6.3 LTS** project — Fast Game client kit (**parity with UE**).
